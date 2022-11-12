@@ -11,26 +11,54 @@ Note: to hide later if necessary.
 
 ## Libraries
 
-```{r}
+```{r lib, message=FALSE, warning=FALSE, error=FALSE}
 library(tidyverse)
 library(caret)
 ```
-
-
-# Report
 
 # Introduction
 
 # Data
 
+```{r readingdata, message=FALSE, warning=FALSE}
+unzippedNewDataCSV <- unzip("OnlineNewsPopularity.zip")
+
+newsDataName <- read_csv(unzippedNewDataCSV[1]) # This is the names file
+newsData <- read_csv(unzippedNewDataCSV[2])
+
+head(newsData)
+```
+
 ```{r}
-UnzippedNewsDataCSV <- unzip("OnlineNewsPopularity.zip")
+newsData %>% 
+  select(starts_with("data_channel_is_"))
+```
+The 6 groups to analyze are : 
 
-NewsDataNames <- read_csv(UnzippedNewsDataCSV[1]) # This is the names file
-NewsData <- read_csv(UnzippedNewsDataCSV[2])
+- Lifestyle 
+- Entertainment 
+- Business
+- Social Media 
+- Technology 
+- World 
 
-
-head(NewsData)
+```{r subsetdata}
+subsettingData <- function(data, area){
+  key <- ifelse(tolower(area)=="lifestyle", "lifestyle",
+                ifelse(tolower(area)=="entertainment", "entertainment",
+                       ifelse(tolower(area)=="business", "bus",
+                              ifelse(tolower(area)=="social media", "socmed",
+                                     ifelse(tolower(area)=="technology", "tech",
+                                            ifelse(tolower(area)=="world", "world", "NA"))))))
+  print(key)
+  subsetVar <- paste("data_channel_is_", key, sep = "")
+  print(as.symbol(subsetVar))
+  
+  subsetData <- data %>% 
+    filter(!!as.symbol(subsetVar)==1)
+  
+  return(subsetData)
+}
 ```
 
 
