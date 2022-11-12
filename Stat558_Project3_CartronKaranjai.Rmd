@@ -44,22 +44,32 @@ The 6 groups to analyze are :
 
 ```{r subsetdata}
 subsettingData <- function(data, area){
+  #getting the naming convention as per the dataframe
   key <- ifelse(tolower(area)=="lifestyle", "lifestyle",
                 ifelse(tolower(area)=="entertainment", "entertainment",
                        ifelse(tolower(area)=="business", "bus",
                               ifelse(tolower(area)=="social media", "socmed",
                                      ifelse(tolower(area)=="technology", "tech",
                                             ifelse(tolower(area)=="world", "world", "NA"))))))
-  print(key)
   subsetVar <- paste("data_channel_is_", key, sep = "")
-  print(as.symbol(subsetVar))
   
+  # filtering the data and removing the data_channel_is_ columns
   subsetData <- data %>% 
-    filter(!!as.symbol(subsetVar)==1)
+    filter(!!as.symbol(subsetVar)==1) %>% 
+    select(-c(starts_with("data_channel_is_")))
   
   return(subsetData)
 }
+
+data <- subsettingData(newsData, "lifestyle")
 ```
 
+# Exploratory Data Analysis 
+
+Let us take a look at the columns available. 
+
+```{r}
+colnames(data)
+```
 
 
