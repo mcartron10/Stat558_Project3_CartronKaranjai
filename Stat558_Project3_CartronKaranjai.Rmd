@@ -1,0 +1,37 @@
+---
+title: "Stat558_Project3_CartronKaranjai"
+author: "Matthieu Cartron and Sneha Karanjai"
+date: "11/11/2022"
+output: html_document
+---
+
+# Setup
+
+Note: to hide later if necessary.
+
+## Libraries
+
+```{r}
+library(tidyverse)
+library(caret)
+```
+
+
+# Report
+
+# Introduction
+
+# Data
+
+```{r}
+UnzippedNewsDataCSV <- unzip("OnlineNewsPopularity.zip")
+
+NewsDataNames <- read_csv(UnzippedNewsDataCSV[1]) # This is the names file
+NewsData <- read_csv(UnzippedNewsDataCSV[2])
+
+
+head(NewsData)
+```
+
+
+
