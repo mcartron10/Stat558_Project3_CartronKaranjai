@@ -42,6 +42,8 @@ The 6 groups to analyze are :
 - Technology 
 - World 
 
+We will filter the data to analyze articles in one data channel at a time. Additionally according to the data report, `url` and `timedelta` are two non-predictive columns so we will remove them.
+
 ```{r subsetdata}
 subsettingData <- function(data, area){
   #getting the naming convention as per the dataframe
@@ -53,10 +55,10 @@ subsettingData <- function(data, area){
                                             ifelse(tolower(area)=="world", "world", "NA"))))))
   subsetVar <- paste("data_channel_is_", key, sep = "")
   
-  # filtering the data and removing the data_channel_is_ columns
+  # filtering the data and removing the data_channel_is_ columns, url, and timedelta
   subsetData <- data %>% 
     filter(!!as.symbol(subsetVar)==1) %>% 
-    select(-c(starts_with("data_channel_is_")))
+    select(-c(starts_with("data_channel_is_"), url, timedelta))
   
   return(subsetData)
 }
@@ -72,4 +74,4 @@ Let us take a look at the columns available.
 colnames(data)
 ```
 
-
+Whew! That is a long list of columns to analyze. Running a quick summary statistics on them. 
