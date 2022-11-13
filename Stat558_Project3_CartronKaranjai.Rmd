@@ -79,13 +79,9 @@ Let us take a look at the columns available.
 colnames(data)
 ```
 
-<<<<<<< HEAD
 Whew! That is a long list of columns to analyze. Instead of analyzing them all, let us think about our data. What might we expect to be related to how many times an article is shared? We hear frequently about how the dissemination of news and the content thereof are related in some way. For our data channels, let's pay close attention to the number of shares (dissemination) and variables that we might be able to link to it. Can we find any interesting relationships in the exploratory analysis? And do these relationships change across the different channels? Maybe the sharing of lifestyle articles is less correlated with sentiment than, say, world news articles.  
 
 
-
-
-=======
 First, let's take a look at the variable descriptions for some better understanding. Here is a data description from the UCI Machine Learning Repository: 
 
 - n_tokens_title: Number of words in the title
@@ -120,7 +116,7 @@ print(paste("******Summary Statistics of", channel, "******"))
 summary(data)
 ```
 
-Feeding all these variables into the training models would mean "Garbage In and Garbage Out". One of the easiest ways to choose the variables to fit into the models is by checking the correlation. Potential predictors with high correlation between each other can prove problematic as they introduce collinearity into the model. We can remove some of this redundancy from the outset. 
+Feeding all these variables into the training models would mean "Garbage In and Garbage Out". One of the easiest ways to choose the variables to fit into the models is by checking the correlation. Potential predictors with high correlation between each other can prove problematic as they introduce multicollinearity into the model. We can remove some of this redundancy from the outset. 
 
 ```{r}
 cols <- names(data)
@@ -136,21 +132,21 @@ corrDf
 We will remove the columns in X2 from our analysis.
 
 ```{r}
-data1 <- data %>% 
+data <- data %>% 
   select(-c(corrDf$X2))
-data1
+data
 ```
 We are now down from `r ncol(newsData)` columns to `r ncol(data)` columns. Let us finally do a correlation plot for all variables with threshold greater than 0.55 for the the present dataframe. 
 
 ```{r}
-cols <- names(data1)
+cols <- names(data)
 
 corrDf <- data.frame(t(combn(cols,2)), stringsAsFactors = F) %>%
   rowwise() %>%
-  mutate(v = cor(data1[,X1], data1[,X2]))
+  mutate(v = cor(data[,X1], data[,X2]))
 
 corrDf <- corrDf %>% 
-  filter(abs(v)>0.55)
+  filter(abs(v)>0.55) 
 corrDf
 
 #turn corr back into matrix in order to plot with corrplot
@@ -159,23 +155,45 @@ correlationMat <- reshape2::acast(corrDf, X1~X2, value.var="v")
 #plot correlations visually
 corrplot(correlationMat, is.corr=FALSE, tl.col="black", na.label=" ")
 ```
-Understanding the distribution of the target variable 
 
+Correlation with Shares: 
 
 ```{r}
-ggplot(data1) +
+sharesCor <- cor(data[ , colnames(data) != "shares"],  # Calculate correlations
+                data$shares)
+
+sharesCor <- data.frame(sharesCor)
+sharesCor$names <- rownames(sharesCor)
+rownames(sharesCor) <- NULL
+
+sharesCor <- sharesCor %>% 
+  rename(corrcoeff=sharesCor) %>% 
+  arrange(desc(abs(corrcoeff))) %>% 
+  head(6)
+
+par(mfrow=c(2,3))
+for (i in sharesCor$names) {
+  plot(data$shares, data[[i]], ylab = i, main = paste("Shares vs", i))
+}
+
+```
+
+
+
+Understanding the distribution of the target variable 
+
+```{r}
+ggplot(data) +
   aes(x = shares) +
   geom_histogram(bins = 26L, fill = "#112446") +
   labs(title = "Distribution of Shares") +
   theme_gray()
-
-
 ```
 
-Now let's analyze the effect of the different variables on the number of shares, starting with the number of words in the title and how they affect the shares. 
+Now let's analyze the affect of the different variables on the shares. Starting with the number of words in the title and how they affect the shares. 
 
 ```{r}
-data1 %>% 
+data %>% 
   group_by(n_tokens_title) %>% 
   summarise(avgShares = mean(shares)) %>% 
   ggplot() +
@@ -184,40 +202,122 @@ data1 %>%
   labs(title = "Average Shares vs Title Tokens") +
   theme_gray()
 ```
->>>>>>> 9eb70331505dd712856296b2a7ec02a6ca4fbb20
 
-## Automating Scatter Plots by Channel
-
-Correlation with Shares: 
+Expected Behavior : Readers prefer titles with lesser number of words. 
 
 ```{r}
-sharescor <- cor(data[ , colnames(data) != "shares"], data$shares)
-
-sharescor <- as.data.frame(sharescor)
-
-top_five_shares_corr <- sharescor %>% 
-  arrange(desc(abs(sharescor))) %>%
-  slice(1:5) 
-  
-top_five_vars <- cbind(rownames(top_five_shares_corr), top_five_shares_corr)
-rownames(top_five_vars) <- NULL
-
-top_five_vars
+data %>% 
+  group_by(factor(num_imgs)) %>% 
+  summarise(sumShares = sum(shares)) %>% 
+  ggplot() +
+  aes(x = `factor(num_imgs)`, y = sumShares) +
+  geom_col(fill = "#112446") +
+  labs(title = "Shares vs Images", x = "Number of Images", y = "Shares(Sum)") +
+  theme_minimal()
 ```
 
-Now create placeholder variables for the five variables with the highest correlation with shares.
+Expected Behavior : Less images do better. 
 
 ```{r}
-Top1 <- top_five_vars[1, 1]
+data %>% 
+  group_by(factor(num_videos)) %>% 
+  summarise(sumShares = sum(shares)) %>% 
+  ggplot() +
+  aes(x = `factor(num_videos)`, y = sumShares) +
+  geom_col(fill = "#112446") +
+  labs(title = "Shares vs Videos", x = "Number of Videos", y = "Shares(Sum)") +
+  theme_minimal()
+```
 
-df <- colnames(data) %in% Top1[1]
+Expected Behavior: 0-1 Videos do the best. 
 
+```{r}
+mon <- data %>% 
+  select(starts_with("weekday_is_monday"), shares) %>% 
+  group_by(weekday_is_monday) %>% 
+  summarise(sumShares = sum(shares)) %>% 
+  rename(day = weekday_is_monday) %>% 
+  filter(day==1) 
+mon$day[mon$day==1] <- "MON"
+
+tue <- data %>% 
+  select(starts_with("weekday_is_tuesday"), shares) %>% 
+  group_by(weekday_is_tuesday) %>% 
+  summarise(sumShares = sum(shares)) %>% 
+  rename(day = weekday_is_tuesday) %>% 
+  filter(day==1)
+tue$day[tue$day==1] <- "TUE"
+
+
+wed <- data %>% 
+  select(starts_with("weekday_is_wednesday"), shares) %>% 
+  group_by(weekday_is_wednesday) %>% 
+  summarise(sumShares = sum(shares)) %>% 
+  rename(day = weekday_is_wednesday) %>% 
+  filter(day==1)
+wed$day[wed$day==1] <- "WED"
+
+
+thu <- data %>% 
+  select(starts_with("weekday_is_thursday"), shares) %>% 
+  group_by(weekday_is_thursday) %>% 
+  summarise(sumShares = sum(shares)) %>% 
+  rename(day = weekday_is_thursday) %>% 
+  filter(day==1)
+thu$day[thu$day==1] <- "THU"
+
+fri <- data %>% 
+  select(starts_with("weekday_is_friday"), shares) %>% 
+  group_by(weekday_is_friday) %>% 
+  summarise(sumShares = sum(shares)) %>% 
+  rename(day = weekday_is_friday) %>% 
+  filter(day==1)
+fri$day[fri$day==1] <- "FRI"
+
+sat <- data %>% 
+  select(starts_with("weekday_is_saturday"), shares) %>% 
+  group_by(weekday_is_saturday) %>% 
+  summarise(sumShares = sum(shares)) %>% 
+  rename(day = weekday_is_saturday) %>% 
+  filter(day==1)
+sat$day[sat$day==1] <- "SAT"
+
+sun <- data %>% 
+  select(starts_with("weekday_is_sunday"), shares) %>% 
+  group_by(weekday_is_sunday) %>% 
+  summarise(sumShares = sum(shares)) %>% 
+  rename(day = weekday_is_sunday) %>% 
+  filter(day==1)
+sun$day[sun$day==1] <- "SUN"
+
+mon %>% 
+  bind_rows(tue, wed, thu, fri, sat, sun) %>% 
+  ggplot() +
+  aes(x = day, y = sumShares) +
+  geom_col(fill = "#112446") +
+  labs(title = "Most Shared Articles by the Day of the Week") +
+  theme_gray()
+```
+Expected Behavior : Most number of articles are shared over the weekends.
+
+Polarity is float which lies in the range of [-1,1] where 1 means positive statement and -1 means a negative statement. Do title polarity affect the average shares?
+
+```{r}
 
 ```
 
-Note: What I would like to do: 
+How does text polarity affect shares?
 
-Match the variables with the highest absolute value of correlation with the actual columns. From there create scatter plots for each of those variables with the shares variable. I am a little stuck on how to code this for now. 
+```{r}
+
+```
+
+Subjective sentences generally refer to personal opinion, emotion or judgment whereas objective refers to factual information. Subjectivity is a float which lies in the range of [0,1]. A value closer to 0 means an opinion or an emotion and 1 means a fact. How does the text having a factual tone or an author's emotion/opinion affect the total shares?
+
+```{r}
+
+```
+
 
 
 # Modeling
@@ -255,3 +355,4 @@ Unlike the random forest, in the boosted tree method, trees are grown sequential
 $\hat{y} = \hat{y}(x) + \lambda \hat{y}^b (x)$
 
 ## Model Comparison
+
