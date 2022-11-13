@@ -120,7 +120,7 @@ print(paste("******Summary Statistics of", channel, "******"))
 summary(data)
 ```
 
-Feeding all these variables into the training models would mean "Garbage In and Garbage Out". One of the easiest ways to choose the variables to fit into the models is by checking the correlation. Potential predictors with high correlation between each other can prove problematic as they introduce multicollinearity into the model. We can remove some of this redundancy from the outset. 
+Feeding all these variables into the training models would mean "Garbage In and Garbage Out". One of the easiest ways to choose the variables to fit into the models is by checking the correlation. Potential predictors with high correlation between each other can prove problematic as they introduce collinearity into the model. We can remove some of this redundancy from the outset. 
 
 ```{r}
 cols <- names(data)
@@ -136,18 +136,18 @@ corrDf
 We will remove the columns in X2 from our analysis.
 
 ```{r}
-data <- data %>% 
+data1 <- data %>% 
   select(-c(corrDf$X2))
-data
+data1
 ```
 We are now down from `r ncol(newsData)` columns to `r ncol(data)` columns. Let us finally do a correlation plot for all variables with threshold greater than 0.55 for the the present dataframe. 
 
 ```{r}
-cols <- names(data)
+cols <- names(data1)
 
 corrDf <- data.frame(t(combn(cols,2)), stringsAsFactors = F) %>%
   rowwise() %>%
-  mutate(v = cor(data[,X1], data[,X2]))
+  mutate(v = cor(data1[,X1], data1[,X2]))
 
 corrDf <- corrDf %>% 
   filter(abs(v)>0.55)
@@ -163,16 +163,19 @@ Understanding the distribution of the target variable
 
 
 ```{r}
-ggplot(data) +
+ggplot(data1) +
   aes(x = shares) +
   geom_histogram(bins = 26L, fill = "#112446") +
   labs(title = "Distribution of Shares") +
   theme_gray()
+
+
 ```
-Now let's analyze the affect of the different variables on the shares. Starting with the number of words in the title and how they affect the shares. 
+
+Now let's analyze the effect of the different variables on the number of shares, starting with the number of words in the title and how they affect the shares. 
 
 ```{r}
-data %>% 
+data1 %>% 
   group_by(n_tokens_title) %>% 
   summarise(avgShares = mean(shares)) %>% 
   ggplot() +
@@ -183,13 +186,72 @@ data %>%
 ```
 >>>>>>> 9eb70331505dd712856296b2a7ec02a6ca4fbb20
 
+## Automating Scatter Plots by Channel
+
 Correlation with Shares: 
 
 ```{r}
 sharescor <- cor(data[ , colnames(data) != "shares"], data$shares)
 
-sharescor
+sharescor <- as.data.frame(sharescor)
+
+top_five_shares_corr <- sharescor %>% 
+  arrange(desc(abs(sharescor))) %>%
+  slice(1:5) 
+  
+top_five_vars <- cbind(rownames(top_five_shares_corr), top_five_shares_corr)
+rownames(top_five_vars) <- NULL
+
+top_five_vars
+```
+
+Now create placeholder variables for the five variables with the highest correlation with shares.
+
+```{r}
+Top1 <- top_five_vars[1, 1]
+
+df <- colnames(data) %in% Top1[1]
+
 
 ```
 
+Note: What I would like to do: 
 
+Match the variables with the highest absolute value of correlation with the actual columns. From there create scatter plots for each of those variables with the shares variable. I am a little stuck on how to code this for now. 
+
+
+# Modeling
+
+
+## Linear Regression
+
+A simple linear regression refers to a linear equation that captures the relationship between a response variable, $Y$, and a predictor variable $X$.  The relationship is modeled below:
+
+$Y = \beta_0 + \beta_1X_1 +\epsilon i$
+
+Where $\beta_0$ is the intercept and $\beta_1$ is the slope of the line. This relationship can be extended to the case in which the response variable is modeled as a function of more than one predictor variable. This is the case of a multiple linear regression, which is as follows:
+
+$Y = \beta_0 + \beta_1X_1 + \beta_2X_2 + … + \beta_nX_n + \epsilon i$
+
+Where $\beta_0$ is the intercept and all $\beta$ are slope coefficients. For both simple and multiple linear regression cases, the Method of Least Squares is widely used in summarizing the data. The least squares method minimizes values of $\beta_0$ and all $\beta_n$, seen below:
+
+$\sum_{i = 1}^{n} (yi - \beta_0 - \sum_{j = 1}^{k} \beta_j x_{ij}^2)$
+
+
+
+## Random Forest
+
+The random forest model refers to an ensemble method of either classification or regression. In this case, we are predicting a continuous response variable, and are thus using the latter case. The random forest creates numerous trees from bootstrap samples of the data. Bootstrap samples are simply samples taken from the data and are of the same size (sample $n$ equals bootstrap $m$), meaning that an observation from the sample data could be used twice in the bootstrap sample, for example. A tree is fit to each bootstrap sample, and for each fit a random subset (generally $m = p/3$ predictors) of predictors is chosen. This is done with the tuning parameter mtry. 
+
+Generally speaking, random forests predict more accurately because the results of the fitted trees are averaged across all trees. This averaging reduces variance. 
+
+
+## Boosted Tree
+
+Boosted tree models, like the random forest, are an ensemble tree-based method that can be used for classification or regression. Again, in our case, we are predicting a continuous response and are using regression. 
+
+Unlike the random forest, in the boosted tree method, trees are grown sequentially, and for each tree the residuals are treated as the response. This is exactly true for the first tree. Updated predictions can be modeled by the following:
+
+$\hat{y} = \hat{y}(x) + \lambda \hat{y}^b (x)$
+
+## Model Comparison
