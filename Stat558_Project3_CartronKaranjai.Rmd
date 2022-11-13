@@ -136,7 +136,10 @@ data <- data %>%
   select(-c(corrDf$X2))
 data
 ```
-We are now down from `r ncol(newsData)` columns to `r ncol(data)` columns. Let us finally do a correlation plot for all variables with threshold greater than 0.55 for the the present dataframe. 
+We are now down from `r ncol(newsData)` columns to `r ncol(data)` columns.
+
+
+Let us finally do a correlation plot for all variables with threshold greater than 0.55 for the the present dataframe. 
 
 ```{r}
 cols <- names(data)
@@ -146,7 +149,8 @@ corrDf <- data.frame(t(combn(cols,2)), stringsAsFactors = F) %>%
   mutate(v = cor(data[,X1], data[,X2]))
 
 corrDf <- corrDf %>% 
-  filter(abs(v)>0.55) 
+  filter(abs(v)>0.55) %>% 
+  arrange(desc(v))
 corrDf
 
 #turn corr back into matrix in order to plot with corrplot
@@ -318,12 +322,31 @@ Subjective sentences generally refer to personal opinion, emotion or judgment wh
 
 ```
 
+# Data Preparation
 
+Data splitting is an important aspect of data science, particularly for creating models based on data. This technique helps ensure the creation of data models and processes that use data models -- such as machine learning -- are accurate. In a basic two-part data split, the training data set is used to train and develop models. Training sets are commonly used to estimate different parameters or to compare different model performance. The testing data set is used after the training is done. We will use a 70-30 split on the dataset.
+
+```{r}
+train_index <- createDataPartition(data$shares, p = 0.7, 
+                                   list = FALSE)
+train <- data[train_index, ]
+test <- data[-train_index, ]
+```
+
+We will check the shape of the train and test set
+
+```{r}
+print("The train set dimensions")
+dim(train)
+print("The test set dimensions")
+dim(test)
+```
 
 # Modeling
 
+We will be comparing linear and ensemble techniques for predicting shares. Each section below elucidates the model used and the reasoning behind it. 
 
-## Linear Regression
+## Linear Regression 
 
 A simple linear regression refers to a linear equation that captures the relationship between a response variable, $Y$, and a predictor variable $X$.  The relationship is modeled below:
 
@@ -337,7 +360,93 @@ Where $\beta_0$ is the intercept and all $\beta$ are slope coefficients. For bot
 
 $\sum_{i = 1}^{n} (yi - \beta_0 - \sum_{j = 1}^{k} \beta_j x_{ij}^2)$
 
+Since we are dealing with `r ncol(data)` variables, it is probably important to know that we would need to employ a feature selection technique. Feature selection is the process of reducing the number of input variables when developing a predictive model.
+It is desirable to reduce the number of input variables to both reduce the computational cost of modeling and, in some cases, to improve the performance of the model. To prove this, we will first fit a full-model(with all the available variables) with multiple linear regression. 
 
+```{r, warning=FALSE}
+trControl <- trainControl(method = "repeatedcv", number = 5, repeats = 5)
+
+mlrWithoutVS <- train(shares ~ .,
+                     data = train,
+                     preProcess = c("center", "scale"),
+                     method = "lm", trControl = trControl)
+
+summary(mlrWithoutVS)
+```
+
+As we can see, the Root Mean Square Error of the model is `mlrWithoutVS$results$RMSE`. Now let us see how this changes with PCA. Let us check the model for multicollinearity. 
+
+```{r}
+pcs <- prcomp(train , scale = TRUE, center = TRUE)
+summary(pcs)
+```
+
+
+```{r}
+summary(pcs)
+```
+
+```{r}
+par(mfrow = c(1, 2))
+plot(pcs$sdev^2/sum(pcs$sdev^2), xlab = "Principal Component", 
+		 ylab = "Proportion of Variance Explained", ylim = c(0, 1), type = 'b')
+plot(cumsum(pcs$sdev^2/sum(pcs$sdev^2)), xlab = "Principal Component", 
+ylab = "Cum. Prop of Variance Explained", ylim = c(0, 1), type = 'b')
+```
+
+```{r}
+pcaVar <- as.vector(cumsum(pcs$sdev^2/sum(pcs$sdev^2)))
+for (i in seq_along(pcaVar)) {
+  if(pcaVar[i] > 0.9 & pcaVar[i]<0.92){
+    pcaIndex = i
+  }
+}
+
+pc_train <- predict(pcs, train)
+pc_train <- data.frame(pc_train)
+pc_train <- pc_train %>% 
+  select(c(1:pcaIndex)) %>% 
+  mutate(shares=train$shares)
+pc_test <- predict(pcs, test)
+```
+
+We will now fit a linear regression using these PCs. 
+
+```{r}
+mlrWitVS <- train(shares ~ .,
+                  data = pc_train,
+                  preProcess = c("center", "scale"),
+                  method = "lm", 
+                  trControl = trControl)
+
+summary(mlrWitVS)
+```
+
+```{r}
+mlrWitVS$results$RMSE
+```
+
+Now that we have a Multiple Linear Regression with PCA, let us see how a Lasso Regression on the original datset competes in terms of variable selection. 
+
+```{r, warning=FALSE}
+tuneGrid <- expand.grid(
+  .fraction = seq(0, 1, by = 0.1)
+)
+
+lassoModel <- train(
+  shares ~ .,
+  data = train,
+  method = 'lasso',
+  preProcess = c("center", "scale"),
+  trControl = trControl,
+  tuneGrid = tuneGrid
+)
+
+lassoFinalModel <- as_tibble(lassoModel$results) %>% 
+  filter(fraction==lassoModel$bestTune$fraction) 
+
+lassoFinalModel$RMSE
+```
 
 ## Random Forest
 
