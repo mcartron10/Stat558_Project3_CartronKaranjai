@@ -108,30 +108,28 @@ Whew! That is a long list of columns to analyze. Here's a data description from 
 Running a quick summary statistics on them. 
 
 ```{r summarystats}
-summarystats <- function(data) {
-  print(paste("******Summary Statistics of", channel, "******"))
-  summary(data)
-}
+print(paste("******Summary Statistics of", channel, "******"))
+summary(data)
 ```
 
 Feeding all these variables into the training models would mean "Garbage In and Garbage Out". One of the easiest ways to choose the variables to fit into the models is by checking the correlation. 
 
 ```{r}
 cols <- names(data)
-corr_df <- data.frame(t(combn(cols,2)), stringsAsFactors = F) %>%
+corrDf <- data.frame(t(combn(cols,2)), stringsAsFactors = F) %>%
   rowwise() %>%
   mutate(v = cor(data[,X1], data[,X2]))
 
-corr_df <- corr_df %>% 
+corrDf <- corrDf %>% 
   filter(abs(v)>0.8)
-corr_df
+corrDf
 ```
 
 We will remove the columns in X2 from our analysis.
 
 ```{r}
 data <- data %>% 
-  select(-c(corr_df$X2))
+  select(-c(corrDf$X2))
 data
 ```
 We are now down from `r ncol(newsData)` columns to `r ncol(data)` columns. Let us finally do a correlation plot for all variables with threshold greater than 0.55 for the the present dataframe. 
@@ -139,19 +137,19 @@ We are now down from `r ncol(newsData)` columns to `r ncol(data)` columns. Let u
 ```{r}
 cols <- names(data)
 
-corr_df <- data.frame(t(combn(cols,2)), stringsAsFactors = F) %>%
+corrDf <- data.frame(t(combn(cols,2)), stringsAsFactors = F) %>%
   rowwise() %>%
   mutate(v = cor(data[,X1], data[,X2]))
 
-corr_df <- corr_df %>% 
+corrDf <- corrDf %>% 
   filter(abs(v)>0.55)
-corr_df
+corrDf
 
 #turn corr back into matrix in order to plot with corrplot
-mtx_corr <- reshape2::acast(corr_df, X1~X2, value.var="v")
+correlationMat <- reshape2::acast(corrDf, X1~X2, value.var="v")
   
 #plot correlations visually
-corrplot(mtx_corr, is.corr=FALSE, tl.col="black", na.label=" ")
+corrplot(correlationMat, is.corr=FALSE, tl.col="black", na.label=" ")
 ```
 
 ```{r}
