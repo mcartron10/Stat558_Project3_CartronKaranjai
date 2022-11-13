@@ -151,8 +151,25 @@ correlationMat <- reshape2::acast(corrDf, X1~X2, value.var="v")
 #plot correlations visually
 corrplot(correlationMat, is.corr=FALSE, tl.col="black", na.label=" ")
 ```
+Understanding the distribution of the target variable 
 
 ```{r}
+ggplot(data) +
+  aes(x = shares) +
+  geom_histogram(bins = 26L, fill = "#112446") +
+  labs(title = "Distribution of Shares") +
+  theme_gray()
+```
+Now let's analyze the affect of the different variables on the shares. Starting with the number of words in the title and how they affect the shares. 
 
+```{r}
+data %>% 
+  group_by(n_tokens_title) %>% 
+  summarise(avgShares = mean(shares)) %>% 
+  ggplot() +
+  aes(x = avgShares, y = n_tokens_title) +
+  geom_point(shape = "circle", size = 1.5, colour = "#112446") +
+  labs(title = "Average Shares vs Title Tokens") +
+  theme_gray()
 ```
 
