@@ -14,6 +14,9 @@ Note: to hide later if necessary.
 ```{r lib, message=FALSE, warning=FALSE, error=FALSE}
 library(tidyverse)
 library(caret)
+library(brainGraph)
+library(corrplot)
+library(GGally)
 ```
 
 # Introduction
@@ -60,10 +63,12 @@ subsettingData <- function(data, area){
     filter(!!as.symbol(subsetVar)==1) %>% 
     select(-c(starts_with("data_channel_is_"), url, timedelta))
   
-  return(subsetData)
+  return(list(subsetData, subsetVar))
 }
 
-data <- subsettingData(newsData, "lifestyle")
+subsettingDataReturn <- subsettingData(newsData, "lifestyle")
+data <- subsettingDataReturn[[1]]
+channel <- subsettingDataReturn[[2]]
 ```
 
 # Exploratory Data Analysis 
@@ -74,16 +79,115 @@ Let us take a look at the columns available.
 colnames(data)
 ```
 
-Whew! That is a long list of columns to analyze. #Running a quick summary statistics on them.# Instead of analyzing them all, let us think about our data. What might we expect to be related to how many times an article is shared? We hear frequently about how the dissemination of news and the content thereof are related in some way. For our data channels, let's pay close attention to the number of shares (dissemination) and variables that we might be able to link to it. Can we find any interesting relationships in the exploratory analysis?  
+<<<<<<< HEAD
+Whew! That is a long list of columns to analyze. Instead of analyzing them all, let us think about our data. What might we expect to be related to how many times an article is shared? We hear frequently about how the dissemination of news and the content thereof are related in some way. For our data channels, let's pay close attention to the number of shares (dissemination) and variables that we might be able to link to it. Can we find any interesting relationships in the exploratory analysis? And do these relationships change across the different channels? Maybe the sharing of lifestyle articles is less correlated with sentiment than, say, world news articles.  
 
-```{r}
-head(data)
+
+
+
+=======
+First, let's take a look at the variable descriptions for some better understanding. Here is a data description from the UCI Machine Learning Repository: 
+
+- n_tokens_title: Number of words in the title
+- n_tokens_content Number of words in the content
+- n_unique_tokens: Rate of unique words in the content
+- n_non_stop_unique_tokens: Rate of unique non-stop words in the content
+- num_hrefs: Number of links
+- num_self_hrefs: Number of links to other articles published by Mashable
+- num_imgs: Number of images
+- num_videos: Number of videos
+- average_token_length: Average length of the words in the content
+- num_keywords: Number of keywords in the metadata
+- self_reference_min_shares: Min. shares of referenced articles in Mashable
+- self_reference_max_shares: Max. shares of referenced articles in Mashable
+- self_reference_avg_sharess: Avg. shares of referenced articles in Mashable
+- global_subjectivity: Text subjectivity
+- global_sentiment_polarity: Text sentiment polarity
+- global_rate_positive_words: Rate of positive words in the content
+- global_rate_negative_words: Rate of negative words in the content
+- rate_positive_words: Rate of positive words among non-neutral tokens
+- rate_negative_words: Rate of negative words among non-neutral tokens
+- title_subjectivity: Title subjectivity
+- title_sentiment_polarity: Title polarity
+- abs_title_subjectivity: Absolute subjectivity level
+- abs_title_sentiment_polarity: Absolute polarity level
+- shares: Number of shares (target)
+
+
+
+```{r summarystats}
+print(paste("******Summary Statistics of", channel, "******"))
+summary(data)
 ```
 
+Feeding all these variables into the training models would mean "Garbage In and Garbage Out". One of the easiest ways to choose the variables to fit into the models is by checking the correlation. Potential predictors with high correlation between each other can prove problematic as they introduce multicollinearity into the model. We can remove some of this redundancy from the outset. 
 
 ```{r}
+cols <- names(data)
+corrDf <- data.frame(t(combn(cols,2)), stringsAsFactors = F) %>%
+  rowwise() %>%
+  mutate(v = cor(data[,X1], data[,X2]))
 
-ggpairs(data, columns = c(43, 46, 50, 53))
+corrDf <- corrDf %>% 
+  filter(abs(v)>0.8)
+corrDf
+```
+
+We will remove the columns in X2 from our analysis.
+
+```{r}
+data <- data %>% 
+  select(-c(corrDf$X2))
+data
+```
+We are now down from `r ncol(newsData)` columns to `r ncol(data)` columns. Let us finally do a correlation plot for all variables with threshold greater than 0.55 for the the present dataframe. 
+
+```{r}
+cols <- names(data)
+
+corrDf <- data.frame(t(combn(cols,2)), stringsAsFactors = F) %>%
+  rowwise() %>%
+  mutate(v = cor(data[,X1], data[,X2]))
+
+corrDf <- corrDf %>% 
+  filter(abs(v)>0.55)
+corrDf
+
+#turn corr back into matrix in order to plot with corrplot
+correlationMat <- reshape2::acast(corrDf, X1~X2, value.var="v")
+  
+#plot correlations visually
+corrplot(correlationMat, is.corr=FALSE, tl.col="black", na.label=" ")
+```
+Understanding the distribution of the target variable 
+
+```{r}
+ggplot(data) +
+  aes(x = shares) +
+  geom_histogram(bins = 26L, fill = "#112446") +
+  labs(title = "Distribution of Shares") +
+  theme_gray()
+```
+Now let's analyze the affect of the different variables on the shares. Starting with the number of words in the title and how they affect the shares. 
+
+```{r}
+data %>% 
+  group_by(n_tokens_title) %>% 
+  summarise(avgShares = mean(shares)) %>% 
+  ggplot() +
+  aes(x = avgShares, y = n_tokens_title) +
+  geom_point(shape = "circle", size = 1.5, colour = "#112446") +
+  labs(title = "Average Shares vs Title Tokens") +
+  theme_gray()
+```
+>>>>>>> 9eb70331505dd712856296b2a7ec02a6ca4fbb20
+
+Correlation with Shares: 
+
+```{r}
+sharescor <- cor(data[ , colnames(data) != "shares"], data$shares)
+
+sharescor
 
 ```
 
