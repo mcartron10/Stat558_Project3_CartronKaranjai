@@ -74,4 +74,17 @@ Let us take a look at the columns available.
 colnames(data)
 ```
 
-Whew! That is a long list of columns to analyze. Running a quick summary statistics on them. 
+Whew! That is a long list of columns to analyze. #Running a quick summary statistics on them.# Instead of analyzing them all, let us think about our data. What might we expect to be related to how many times an article is shared? We hear frequently about how the dissemination of news and the content thereof are related in some way. For our data channels, let's pay close attention to the number of shares (dissemination) and variables that we might be able to link to it. Can we find any interesting relationships in the exploratory analysis?  
+
+```{r}
+head(data)
+```
+
+
+```{r}
+
+ggpairs(data, columns = c(43, 46, 50, 53))
+
+```
+
+
