@@ -161,6 +161,7 @@ corrplot(correlationMat, is.corr=FALSE, tl.col="black", na.label=" ")
 ```
 Understanding the distribution of the target variable 
 
+
 ```{r}
 ggplot(data) +
   aes(x = shares) +
