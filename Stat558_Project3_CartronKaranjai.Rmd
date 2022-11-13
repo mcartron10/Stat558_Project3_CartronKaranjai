@@ -179,7 +179,6 @@ for (i in sharesCor$names) {
 ```
 
 
-
 Understanding the distribution of the target variable 
 
 ```{r}
@@ -298,6 +297,7 @@ mon %>%
   labs(title = "Most Shared Articles by the Day of the Week") +
   theme_gray()
 ```
+
 Expected Behavior : Most number of articles are shared over the weekends.
 
 Polarity is float which lies in the range of [-1,1] where 1 means positive statement and -1 means a negative statement. Do title polarity affect the average shares?
