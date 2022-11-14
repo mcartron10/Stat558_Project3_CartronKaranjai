@@ -258,7 +258,7 @@ data %>%
   theme_gray()
 ```
 
-Expected Behavior : Readers prefer titles with lesser number of words. 
+Expected Behavior : Readers prefer titles with fewer words. 
 
 ```{r}
 data %>% 
@@ -271,7 +271,7 @@ data %>%
   theme_minimal()
 ```
 
-Expected Behavior : Less images do better. 
+Expected Behavior : Fewer images do better. 
 
 ```{r}
 data %>% 
@@ -354,9 +354,9 @@ mon %>%
   theme_gray()
 ```
 
-Expected Behavior : Most number of articles are shared over the weekends.
+Expected Behavior : Greatest number of articles is shared over weekends.
 
-Polarity is float which lies in the range of [-1,1] where 1 means positive statement and -1 means a negative statement. Do title polarity affect the average shares?
+Polarity is a float which lies in the range of [-1,1] where 1 means positive statement and -1 means a negative statement. Do title polarity affect the average shares?
 
 ```{r}
 
