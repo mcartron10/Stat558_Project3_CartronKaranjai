@@ -118,6 +118,51 @@ summary(data)
 
 Feeding all these variables into the training models would mean "Garbage In and Garbage Out". One of the easiest ways to choose the variables to fit into the models is by checking the correlation. Potential predictors with high correlation between each other can prove problematic as they introduce multicollinearity into the model. We can remove some of this redundancy from the outset. 
 
+Let us first understand the pairplots for all the variables explaining keywords.
+
+```{r}
+pairs(~ kw_min_min + kw_max_min + kw_min_max + kw_avg_max + kw_max_avg + kw_avg_min + kw_max_max + kw_min_avg + kw_avg_avg, data = data)
+```
+
+
+```{r}
+cor(data[, c('kw_min_min', 'kw_max_min', 'kw_min_max', 'kw_avg_max', 'kw_max_avg', 'kw_avg_min', 'kw_max_max', 'kw_min_avg', 'kw_avg_avg')])
+```
+
+
+```{r}
+kwCorData <- as.data.frame(as.table(cor(data[, c('kw_min_min', 'kw_max_min', 'kw_min_max', 'kw_avg_max', 'kw_max_avg', 'kw_avg_min', 'kw_max_max', 'kw_min_avg', 'kw_avg_avg')])))
+
+colRemove <- kwCorData %>% 
+  filter(abs(Freq)>0.8 & Freq!=1 )
+
+colRemove <- as.vector(colRemove$Var2)
+
+data <- data %>% 
+  select(-all_of(colRemove))
+```
+
+This removes all the highly correlated keyword variables that convey the same information. Moving on to self referenced shares. 
+
+
+```{r}
+pairs(~ self_reference_avg_sharess + self_reference_max_shares + self_reference_min_shares, data = data)
+```
+
+```{r}
+srCorData <- as.data.frame(as.table(cor(data[, c('self_reference_avg_sharess', 'self_reference_max_shares', 'self_reference_min_shares')])))
+
+colRemove <- srCorData %>% 
+  filter(abs(Freq)>0.8 & Freq!=1 )
+
+colRemove <- as.vector(colRemove$Var2)
+
+data <- data %>% 
+  select(-all_of(colRemove))
+```
+
+Now removing any variables with a correlation higher than 0.8.
+
 ```{r}
 cols <- names(data)
 corrDf <- data.frame(t(combn(cols,2)), stringsAsFactors = F) %>%
@@ -128,7 +173,6 @@ corrDf <- corrDf %>%
   filter(abs(v)>0.8)
 corrDf
 ```
-
 We will remove the columns in X2 from our analysis.
 
 ```{r}
@@ -136,8 +180,17 @@ data <- data %>%
   select(-c(corrDf$X2))
 data
 ```
-We are now down from `r ncol(newsData)` columns to `r ncol(data)` columns.
+We will also remove `is_weekend` from our analysis since the variables `weekday_is_sunday` and `weekday_is_saturday` captures the information from both these variables. 
 
+```{r}
+data <- data %>% 
+  select(-c("is_weekend"))
+```
+
+
+
+
+We are now down from `r ncol(newsData)` columns to `r ncol(data)` columns.
 
 Let us finally do a correlation plot for all variables with threshold greater than 0.55 for the the present dataframe. 
 
@@ -181,7 +234,6 @@ for (i in sharesCor$names) {
 }
 
 ```
-
 
 Understanding the distribution of the target variable 
 
@@ -381,11 +433,6 @@ pcs <- prcomp(train , scale = TRUE, center = TRUE)
 summary(pcs)
 ```
 
-
-```{r}
-summary(pcs)
-```
-
 ```{r}
 par(mfrow = c(1, 2))
 plot(pcs$sdev^2/sum(pcs$sdev^2), xlab = "Principal Component", 
@@ -422,10 +469,6 @@ mlrWitVS <- train(shares ~ .,
 summary(mlrWitVS)
 ```
 
-```{r}
-mlrWitVS$results$RMSE
-```
-
 Now that we have a Multiple Linear Regression with PCA, let us see how a Lasso Regression on the original datset competes in terms of variable selection. 
 
 ```{r, warning=FALSE}
@@ -444,8 +487,9 @@ lassoModel <- train(
 
 lassoFinalModel <- as_tibble(lassoModel$results) %>% 
   filter(fraction==lassoModel$bestTune$fraction) 
-
-lassoFinalModel$RMSE
+```
+```{r}
+lassoFinalModel
 ```
 
 ## Random Forest
@@ -454,6 +498,22 @@ The random forest model refers to an ensemble method of either classification or
 
 Generally speaking, random forests predict more accurately because the results of the fitted trees are averaged across all trees. This averaging reduces variance. 
 
+```{r}
+tuneGrid = expand.grid(mtry = 1:10)
+
+rfWithPC <- train(shares ~ .,
+                  data = pc_train,
+                  method = "rf", 
+                  trControl = trControl,
+                  tuneGrid = tuneGrid)
+
+rfFinalModel <- as_tibble(rfWithPC$results) %>% 
+  filter(mtry==rfWithPC$bestTune$mtry) 
+```
+
+```{r}
+rfFinalModel
+```
 
 ## Boosted Tree
 
@@ -462,6 +522,25 @@ Boosted tree models, like the random forest, are an ensemble tree-based method t
 Unlike the random forest, in the boosted tree method, trees are grown sequentially, and for each tree the residuals are treated as the response. This is exactly true for the first tree. Updated predictions can be modeled by the following:
 
 $\hat{y} = \hat{y}(x) + \lambda \hat{y}^b (x)$
+
+```{r, results=FALSE}
+tuneGrid = expand.grid(n.trees = c(25, 50, 100, 150, 200), interaction.depth = c(1, 2, 3, 4), shrinkage = 0.1, n.minobsinnode = 10)
+
+# fit the model
+boostedWithPC <- train(shares ~ .,
+                  data = pc_train,
+                  method = "gbm", 
+                  trControl = trControl,
+                  tuneGrid = tuneGrid,
+                  verbose = FALSE)
+
+boostedFinalModel <- as_tibble(boostedWithPC$results) %>% 
+  filter(n.trees==boostedWithPC$bestTune$n.trees,
+         interaction.depth==boostedWithPC$bestTune$interaction.depth,
+         shrinkage==boostedWithPC$bestTune$shrinkage,
+         n.minobsinnode==boostedWithPC$bestTune$n.minobsinnode) 
+```
+
 
 ## Model Comparison
 
