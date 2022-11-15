@@ -599,9 +599,9 @@ postResample(pred = PredPCAtest, obs = test$shares)
 ## LASSO Regression
 
 ```{r}
-PredLassoTest <- predict(lassoModel$, test)
+#PredLassoTest <- predict(lassoModel$, test)
 
-postResample(pred = PredLassoTest, test$shares)
+#postResample(pred = PredLassoTest, test$shares)
 ```
 
 
