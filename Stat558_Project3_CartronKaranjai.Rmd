@@ -485,7 +485,7 @@ pc_train <- pc_train %>%
 pc_test <- predict(pcs, test)
 ```
 
-We will now fit a linear regression using these principle components. 
+We will now fit a multiple linear regression using these principle components. 
 
 ```{r}
 mlrWitVS <- train(shares ~ .,
@@ -574,5 +574,34 @@ boostedFinalModel <- as_tibble(boostedWithPC$results) %>%
 ```
 
 
-## Model Comparison
+# Model Comparisons
+
+Now that we have created our trained models (models fit to the training data) we should now see how accurately they predict future values. Once we have evaluated each of the models, we should be able to compare them to see which is best at making predictions on future data. We can do this by comparing the predicted values of the tested with the actual test set values. 
+
+## Linear Regression Evaluation
+
+Withe function `postResample()` we can find our RMSE for our linear regression on the test data set. How does it compare with the other models? 
+
+```{r}
+PredLinearTest <- predict(mlrWithoutVS, test)
+
+postResample(pred = PredLinearTest, obs = test$shares)
+```
+
+## PCA Regression Evaluation
+
+```{r}
+PredPCAtest <- predict(mlrWitVS, test)
+
+postResample(pred = PredPCAtest, obs = test$shares)
+```
+
+## LASSO Regression
+
+```{r}
+PredLassoTest <- predict(lassoModel$, test)
+
+postResample(pred = PredLassoTest, test$shares)
+```
+
 
