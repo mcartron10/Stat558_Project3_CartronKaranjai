@@ -21,6 +21,20 @@ library(GGally)
 
 # Introduction
 
+The following analysis uses the "Online News Popularity" data set from the UCI machine learning repository. It consists of a number variables describing different features of articles, each of which belonging to one of six "channels." These channels are effectively genres, and are the following: 
+
+- Lifestyle
+- Entertainment
+- Business
+- Social Media
+- World News
+
+For this analysis, we are primarily concerned with the "shares" variable, which simply describes the number of times an article has been shared. We often hear that news travels more quickly depending on its content, title, and maybe even the number of images it uses. In a similar vein, we would like, for each of the different data channels, to use certain variables describing the articles to predict the number of times an article might be shared. But how do we know which variables to choose?
+
+We could use simple intuition to pick variables. For example, it makes sense to think that articles with high sentiment polarity (positive or negative) would tend to, on average, have more shares. We could go through the variables and pick those that we think would have the greatest impact on the number of shares. The issue, however, is that they may change from one data channel to the next. Are lifestyle articles and world news articles going to be affected by the same variables? If we choose the same variables across all the different data channels, then this is the assumption we will be making. To avoid making this assumption, we will automate the process of variable selection by deleting one variable of each of the pairs of colinear variables.
+
+
+
 # Data
 
 ```{r readingdata, message=FALSE, warning=FALSE}
@@ -36,7 +50,7 @@ head(newsData)
 newsData %>% 
   select(starts_with("data_channel_is_"))
 ```
-The 6 groups to analyze are : 
+Again, the 6 data channels to analyze are : 
 
 - Lifestyle 
 - Entertainment 
@@ -110,6 +124,7 @@ First, let's take a look at the variable descriptions for some better understand
 - shares: Number of shares (target)
 
 
+Below we run the five-number summary for each of the variables thus far still included. 
 
 ```{r summarystats}
 print(paste("******Summary Statistics of", channel, "******"))
@@ -118,7 +133,7 @@ summary(data)
 
 Feeding all these variables into the training models would mean "Garbage In and Garbage Out". One of the easiest ways to choose the variables to fit into the models is by checking the correlation. Potential predictors with high correlation between each other can prove problematic as they introduce multicollinearity into the model. We can remove some of this redundancy from the outset. 
 
-Let us first understand the pairplots for all the variables explaining keywords.
+Let us first understand the pair plots for all the variables explaining keywords.
 
 ```{r}
 pairs(~ kw_min_min + kw_max_min + kw_min_max + kw_avg_max + kw_max_avg + kw_avg_min + kw_max_max + kw_min_avg + kw_avg_avg, data = data)
@@ -142,12 +157,14 @@ data <- data %>%
   select(-all_of(colRemove))
 ```
 
-This removes all the highly correlated keyword variables that convey the same information. Moving on to self referenced shares. 
+This removes all the highly correlated keyword variables that convey the same information. Now we will similarly investigate the self-referenced shares. 
 
 
 ```{r}
 pairs(~ self_reference_avg_sharess + self_reference_max_shares + self_reference_min_shares, data = data)
 ```
+
+If we find that any of the self_reference shares variables have a correlation of greater than 0.8 with one another, then we will eliminate it from the analysis. Again, this is done to limit the multicollinearity in the models we build below as well as reduce their dimension. We want to simplify our models from the outset as much as possible without losing predictors that will explain much of the variability in the number of times an article is shared. 
 
 ```{r}
 srCorData <- as.data.frame(as.table(cor(data[, c('self_reference_avg_sharess', 'self_reference_max_shares', 'self_reference_min_shares')])))
@@ -161,7 +178,7 @@ data <- data %>%
   select(-all_of(colRemove))
 ```
 
-Now removing any variables with a correlation higher than 0.8.
+In this next step, we examine our remaining variables to see if any share a correlation of 0.8 or higher. If so, we will remove it from the data. 
 
 ```{r}
 cols <- names(data)
@@ -173,14 +190,14 @@ corrDf <- corrDf %>%
   filter(abs(v)>0.8)
 corrDf
 ```
-We will remove the columns in X2 from our analysis.
+We will remove the columns in X2 from our analysis. Again, we do not want to remove both. For example, if we were looking at the variables temperature in Farenheit and temperature in Celcius in predicting the number of people at a beach, both variable would be telling us the same thing, but we would still want to keep one of them because of its probable importance to the model. 
 
 ```{r}
 data <- data %>% 
   select(-c(corrDf$X2))
 data
 ```
-We will also remove `is_weekend` from our analysis since the variables `weekday_is_sunday` and `weekday_is_saturday` captures the information from both these variables. 
+We will also remove `is_weekend` from our analysis as the variables `weekday_is_sunday` and `weekday_is_saturday` capture the same information. 
 
 ```{r}
 data <- data %>% 
@@ -213,7 +230,7 @@ correlationMat <- reshape2::acast(corrDf, X1~X2, value.var="v")
 corrplot(correlationMat, is.corr=FALSE, tl.col="black", na.label=" ")
 ```
 
-Correlation with Shares: 
+Now that we have a more concise data set, let's zero in on the relationship between our target variable, shares, and the remaining variables. Below we extract the five variables that have the highest correlation with the shares variable. This may be a valuable insight prior to training our models.  
 
 ```{r}
 sharesCor <- cor(data[ , colnames(data) != "shares"],  # Calculate correlations
@@ -233,9 +250,13 @@ for (i in sharesCor$names) {
   plot(data$shares, data[[i]], ylab = i, main = paste("Shares vs", i))
 }
 
+
+#for (i in sharesCor$names) {
+ # ggpairs(data[[i]], ylab = i, main = paste("Shares vs", i))
+#}
 ```
 
-Understanding the distribution of the target variable 
+Let's also take a look at the distribution of our target variable using a histogram.
 
 ```{r}
 ggplot(data) +
@@ -356,10 +377,11 @@ mon %>%
 
 Expected Behavior : Greatest number of articles is shared over weekends.
 
-Polarity is a float which lies in the range of [-1,1] where 1 means positive statement and -1 means a negative statement. Do title polarity affect the average shares?
+Polarity is a float which lies in the range of [-1,1] where 1 refers to a positive statement and -1 refers to a negative statement. Does title polarity affect the average number of shares?
 
 ```{r}
-
+ 
+  
 ```
 
 How does text polarity affect shares?
@@ -376,7 +398,7 @@ Subjective sentences generally refer to personal opinion, emotion or judgment wh
 
 # Data Preparation
 
-Data splitting is an important aspect of data science, particularly for creating models based on data. This technique helps ensure the creation of data models and processes that use data models -- such as machine learning -- are accurate. In a basic two-part data split, the training data set is used to train and develop models. Training sets are commonly used to estimate different parameters or to compare different model performance. The testing data set is used after the training is done. We will use a 70-30 split on the dataset.
+Data splitting is an important aspect of data science, particularly for creating predictive models based on data. This technique helps ensure the creation of data models and processes that use data models -- such as machine learning -- are accurate. In a basic two-part data split, the training data set is used to train and fit models. Training sets are commonly used to estimate different parameters or to compare different model performance. The testing data set is used after the training is done; we see if our trained models are effective in predicting future values. We will use a 70-30 split on the dataset.
 
 ```{r}
 train_index <- createDataPartition(data$shares, p = 0.7, 
@@ -412,8 +434,8 @@ Where $\beta_0$ is the intercept and all $\beta$ are slope coefficients. For bot
 
 $\sum_{i = 1}^{n} (yi - \beta_0 - \sum_{j = 1}^{k} \beta_j x_{ij}^2)$
 
-Since we are dealing with `r ncol(data)` variables, it is probably important to know that we would need to employ a feature selection technique. Feature selection is the process of reducing the number of input variables when developing a predictive model.
-It is desirable to reduce the number of input variables to both reduce the computational cost of modeling and, in some cases, to improve the performance of the model. To prove this, we will first fit a full-model(with all the available variables) with multiple linear regression. 
+Since we are dealing with `r ncol(data)` variables, it is probably important to know that we would need to employ a feature selection/dimension reduction technique. Feature selection is the process of reducing the number of input variables when developing a predictive model.
+It is desirable to reduce the number of input variables to both reduce the computational cost of modeling and, in some cases, to improve the performance of the model. To prove this, we will first fit a full-model (with all the available variables) with multiple linear regression. 
 
 ```{r, warning=FALSE}
 trControl <- trainControl(method = "repeatedcv", number = 5, repeats = 5)
@@ -426,12 +448,18 @@ mlrWithoutVS <- train(shares ~ .,
 summary(mlrWithoutVS)
 ```
 
-As we can see, the Root Mean Square Error of the model is `mlrWithoutVS$results$RMSE`. Now let us see how this changes with PCA. Let us check the model for multicollinearity. 
+As we can see, the Root Mean Square Error of the model is `mlrWithoutVS$results$RMSE`. Now let us see how this changes with the Principle Components Analysis below.  
+
+Principle Components Analysis (PCA) is a dimension-reduction technique that can be extended to regression. In a PCA we find linear combinations of the predictor variables that account for most of the variability in the model. What this does is it reduces the number of variables $p$ into $m$ principal components, allowing for a reduction in complexity all the while retaining most of the variability of the $p$ variables. We extend this to regression by treating our $m$ principle components as predictors, though we cannot interpret them in the same way.  
+
+
+Let us check the model for multicollinearity. 
 
 ```{r}
-pcs <- prcomp(train , scale = TRUE, center = TRUE)
+pcs <- prcomp(train, scale = TRUE, center = TRUE)
 summary(pcs)
 ```
+How many principle components should we use? This is somewhat subjective. Consider the plot below. How many principle components would be required in order to retain say 80 or 90 percent of the variability in the data? If we can effectively reduce the number of variables by way of this method, then we may want to consider a regression of these principle components, even if we lose some interpretability. 
 
 ```{r}
 par(mfrow = c(1, 2))
@@ -444,7 +472,7 @@ ylab = "Cum. Prop of Variance Explained", ylim = c(0, 1), type = 'b')
 ```{r}
 pcaVar <- as.vector(cumsum(pcs$sdev^2/sum(pcs$sdev^2)))
 for (i in seq_along(pcaVar)) {
-  if(pcaVar[i] > 0.9 & pcaVar[i]<0.92){
+  if(pcaVar[i] > 0.9 & pcaVar[i] < 0.92){
     pcaIndex = i
   }
 }
@@ -453,11 +481,11 @@ pc_train <- predict(pcs, train)
 pc_train <- data.frame(pc_train)
 pc_train <- pc_train %>% 
   select(c(1:pcaIndex)) %>% 
-  mutate(shares=train$shares)
+  mutate(shares = train$shares)
 pc_test <- predict(pcs, test)
 ```
 
-We will now fit a linear regression using these PCs. 
+We will now fit a linear regression using these principle components. 
 
 ```{r}
 mlrWitVS <- train(shares ~ .,
@@ -469,7 +497,7 @@ mlrWitVS <- train(shares ~ .,
 summary(mlrWitVS)
 ```
 
-Now that we have a Multiple Linear Regression with PCA, let us see how a Lasso Regression on the original datset competes in terms of variable selection. 
+Now that we have a Multiple Linear Regression with PCA, let us see how a Lasso Regression on the original data set competes in terms of variable selection. 
 
 ```{r, warning=FALSE}
 tuneGrid <- expand.grid(
@@ -488,6 +516,8 @@ lassoModel <- train(
 lassoFinalModel <- as_tibble(lassoModel$results) %>% 
   filter(fraction==lassoModel$bestTune$fraction) 
 ```
+
+
 ```{r}
 lassoFinalModel
 ```
@@ -508,7 +538,7 @@ rfWithPC <- train(shares ~ .,
                   tuneGrid = tuneGrid)
 
 rfFinalModel <- as_tibble(rfWithPC$results) %>% 
-  filter(mtry==rfWithPC$bestTune$mtry) 
+  filter(mtry == rfWithPC$bestTune$mtry) 
 ```
 
 ```{r}
@@ -522,6 +552,8 @@ Boosted tree models, like the random forest, are an ensemble tree-based method t
 Unlike the random forest, in the boosted tree method, trees are grown sequentially, and for each tree the residuals are treated as the response. This is exactly true for the first tree. Updated predictions can be modeled by the following:
 
 $\hat{y} = \hat{y}(x) + \lambda \hat{y}^b (x)$
+
+Below we fit our boosted tree model to the training data set.
 
 ```{r, results=FALSE}
 tuneGrid = expand.grid(n.trees = c(25, 50, 100, 150, 200), interaction.depth = c(1, 2, 3, 4), shrinkage = 0.1, n.minobsinnode = 10)
