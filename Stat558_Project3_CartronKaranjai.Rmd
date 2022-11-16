@@ -583,7 +583,7 @@ Now that we have created our trained models (models fit to the training data) we
 Withe function `postResample()` we can find our RMSE for our linear regression on the test data set. How does it compare with the other models? 
 
 ```{r}
-PredLinearTest <- predict(mlrWithoutVS, test)
+Pred_Linear_Test <- predict(mlrWithoutVS, test)
 
 postResample(pred = PredLinearTest, obs = test$shares)
 ```
@@ -591,9 +591,9 @@ postResample(pred = PredLinearTest, obs = test$shares)
 ## PCA Regression Evaluation
 
 ```{r}
-PredPCAtest <- predict(mlrWitVS, test)
+PredPCAtest <- predict(mlrWitVS, pc_test)
 
-postResample(pred = PredPCAtest, obs = test$shares)
+postResample(pred = PredPCAtest, obs = pc_test)
 ```
 
 ## LASSO Regression
@@ -604,4 +604,24 @@ postResample(pred = PredPCAtest, obs = test$shares)
 #postResample(pred = PredLassoTest, test$shares)
 ```
 
+## Random Forest
+
+```{r}
+rf_pred <- predict(rfFinalModel, test$shares)
+
+postResample(pred = rf_pred, obs = test$shares)
+```
+
+## Boosted Trees
+
+```{r}
+Boost_pred <- predict(boostedFinalModel, test$shares)
+
+postResample(pred = rf_pred, obs = test$shares)
+```
+
+
+## Comparison
+
+In comparing the above models, we should be looking at which among the models best minimizes the RMSE, as the model with the lowest RMSE will, on average, make the most accurate predictions. 
 
