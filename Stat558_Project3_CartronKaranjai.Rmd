@@ -379,21 +379,41 @@ Expected Behavior : Greatest number of articles is shared over weekends.
 
 Polarity is a float which lies in the range of [-1,1] where 1 refers to a positive statement and -1 refers to a negative statement. Does title polarity affect the average number of shares?
 
+
 ```{r}
- 
-  
+data %>% 
+  ggplot() +
+  aes(x = title_sentiment_polarity, y = shares) +
+  geom_point() +
+  geom_jitter() +
+  labs(title = "Shares vs Title Polarity", x = "Title Polarity", y = "Number of Shares") +
+  theme_minimal()
 ```
+  
 
 How does text polarity affect shares?
 
 ```{r}
-
+data %>% 
+  ggplot() +
+  aes(x = global_sentiment_polarity, y = shares) +
+  geom_point() +
+  geom_jitter() +
+  labs(title = "Shares vs Text Polarity", x = "Text Polarity", y = "Number of Shares") +
+  theme_minimal()
 ```
+
 
 Subjective sentences generally refer to personal opinion, emotion or judgment whereas objective refers to factual information. Subjectivity is a float which lies in the range of [0,1]. A value closer to 0 means an opinion or an emotion and 1 means a fact. How does the text having a factual tone or an author's emotion/opinion affect the total shares?
 
 ```{r}
-
+data %>% 
+  ggplot() +
+  aes(x = global_subjectivity, y = shares) +
+  geom_point() +
+  geom_jitter() +
+  labs(title = "Shares vs Text Subjectivity", x = "Text Subjectivity", y = "Number of Shares") +
+  theme_minimal()
 ```
 
 # Data Preparation
