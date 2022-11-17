@@ -1,23 +1,14 @@
 ---
-title: "Stat558_Project3_CartronKaranjai"
+title: "Online News Popularity Analysis"
 author: "Matthieu Cartron and Sneha Karanjai"
-date: "11/11/2022"
-output: html_document
+date: "`r Sys.Date()`"
+output: 
+  github_document :
+    toc : true 
+    number_sections: true
+params:
+  channel : "lifestyle" 
 ---
-
-# Setup
-
-Note: to hide later if necessary.
-
-## Libraries
-
-```{r lib, message=FALSE, warning=FALSE, error=FALSE}
-library(tidyverse)
-library(caret)
-library(brainGraph)
-library(corrplot)
-library(GGally)
-```
 
 # Introduction
 
@@ -31,11 +22,19 @@ The following analysis uses the "Online News Popularity" data set from the UCI m
 
 For this analysis, we are primarily concerned with the "shares" variable, which simply describes the number of times an article has been shared. We often hear that news travels more quickly depending on its content, title, and maybe even the number of images it uses. In a similar vein, we would like, for each of the different data channels, to use certain variables describing the articles to predict the number of times an article might be shared. But how do we know which variables to choose?
 
-We could use simple intuition to pick variables. For example, it makes sense to think that articles with high sentiment polarity (positive or negative) would tend to, on average, have more shares. We could go through the variables and pick those that we think would have the greatest impact on the number of shares. The issue, however, is that they may change from one data channel to the next. Are lifestyle articles and world news articles going to be affected by the same variables? If we choose the same variables across all the different data channels, then this is the assumption we will be making. To avoid making this assumption, we will automate the process of variable selection by deleting one variable of each of the pairs of colinear variables.
+We could use simple intuition to pick variables. For example, it makes sense to think that articles with high sentiment polarity (positive or negative) would tend to, on average, have more shares. We could go through the variables and pick those that we think would have the greatest impact on the number of shares. The issue, however, is that they may change from one data channel to the next. Are lifestyle articles and world news articles going to be affected by the same variables? If we choose the same variables across all the different data channels, then this is the assumption we will be making. To avoid making this assumption, we will automate the process of variable selection by deleting one variable of each of the pairs of collinear variables.
 
+# Setup
 
+```{r lib, message=FALSE, warning=FALSE, error=FALSE}
+library(tidyverse)
+library(caret)
+library(brainGraph)
+library(corrplot)
+library(GGally)
+```
 
-# Data
+# Data Import 
 
 ```{r readingdata, message=FALSE, warning=FALSE}
 unzippedNewDataCSV <- unzip("OnlineNewsPopularity.zip")
@@ -45,21 +44,7 @@ newsData <- read_csv(unzippedNewDataCSV[2])
 
 head(newsData)
 ```
-
-```{r}
-newsData %>% 
-  select(starts_with("data_channel_is_"))
-```
-Again, the 6 data channels to analyze are : 
-
-- Lifestyle 
-- Entertainment 
-- Business
-- Social Media 
-- Technology 
-- World 
-
-We will filter the data to analyze articles in one data channel at a time. Additionally according to the data report, `url` and `timedelta` are two non-predictive columns so we will remove them.
+We will subset the data according to the channel passed to analyze articles in one data channel at a time. Additionally according to the data report, `url` and `timedelta` are two non-predictive columns so we will remove them.
 
 ```{r subsetdata}
 subsettingData <- function(data, area){
@@ -87,10 +72,12 @@ channel <- subsettingDataReturn[[2]]
 
 # Exploratory Data Analysis 
 
+## Column Description 
 Let us take a look at the columns available. 
 
 ```{r}
 colnames(data)
+str(data)
 ```
 
 Whew! That is a long list of columns to analyze. Instead of analyzing them all, let us think about our data. What might we expect to be related to how many times an article is shared? We hear frequently about how the dissemination of news and the content thereof are related in some way. For our data channels, let's pay close attention to the number of shares (dissemination) and variables that we might be able to link to it. Can we find any interesting relationships in the exploratory analysis? And do these relationships change across the different channels? Maybe the sharing of lifestyle articles is less correlated with sentiment than, say, world news articles.  
@@ -126,137 +113,16 @@ First, let's take a look at the variable descriptions for some better understand
 
 Below we run the five-number summary for each of the variables thus far still included. 
 
+## Summary Statistics
 ```{r summarystats}
 print(paste("******Summary Statistics of", channel, "******"))
 summary(data)
 ```
 
-Feeding all these variables into the training models would mean "Garbage In and Garbage Out". One of the easiest ways to choose the variables to fit into the models is by checking the correlation. Potential predictors with high correlation between each other can prove problematic as they introduce multicollinearity into the model. We can remove some of this redundancy from the outset. 
+*Interpretation: *
 
-Let us first understand the pair plots for all the variables explaining keywords.
-
-```{r}
-pairs(~ kw_min_min + kw_max_min + kw_min_max + kw_avg_max + kw_max_avg + kw_avg_min + kw_max_max + kw_min_avg + kw_avg_avg, data = data)
-```
-
-
-```{r}
-cor(data[, c('kw_min_min', 'kw_max_min', 'kw_min_max', 'kw_avg_max', 'kw_max_avg', 'kw_avg_min', 'kw_max_max', 'kw_min_avg', 'kw_avg_avg')])
-```
-
-
-```{r}
-kwCorData <- as.data.frame(as.table(cor(data[, c('kw_min_min', 'kw_max_min', 'kw_min_max', 'kw_avg_max', 'kw_max_avg', 'kw_avg_min', 'kw_max_max', 'kw_min_avg', 'kw_avg_avg')])))
-
-colRemove <- kwCorData %>% 
-  filter(abs(Freq)>0.8 & Freq!=1 )
-
-colRemove <- as.vector(colRemove$Var2)
-
-data <- data %>% 
-  select(-all_of(colRemove))
-```
-
-This removes all the highly correlated keyword variables that convey the same information. Now we will similarly investigate the self-referenced shares. 
-
-
-```{r}
-pairs(~ self_reference_avg_sharess + self_reference_max_shares + self_reference_min_shares, data = data)
-```
-
-If we find that any of the self_reference shares variables have a correlation of greater than 0.8 with one another, then we will eliminate it from the analysis. Again, this is done to limit the multicollinearity in the models we build below as well as reduce their dimension. We want to simplify our models from the outset as much as possible without losing predictors that will explain much of the variability in the number of times an article is shared. 
-
-```{r}
-srCorData <- as.data.frame(as.table(cor(data[, c('self_reference_avg_sharess', 'self_reference_max_shares', 'self_reference_min_shares')])))
-
-colRemove <- srCorData %>% 
-  filter(abs(Freq)>0.8 & Freq!=1 )
-
-colRemove <- as.vector(colRemove$Var2)
-
-data <- data %>% 
-  select(-all_of(colRemove))
-```
-
-In this next step, we examine our remaining variables to see if any share a correlation of 0.8 or higher. If so, we will remove it from the data. 
-
-```{r}
-cols <- names(data)
-corrDf <- data.frame(t(combn(cols,2)), stringsAsFactors = F) %>%
-  rowwise() %>%
-  mutate(v = cor(data[,X1], data[,X2]))
-
-corrDf <- corrDf %>% 
-  filter(abs(v)>0.8)
-corrDf
-```
-We will remove the columns in X2 from our analysis. Again, we do not want to remove both. For example, if we were looking at the variables temperature in Farenheit and temperature in Celcius in predicting the number of people at a beach, both variable would be telling us the same thing, but we would still want to keep one of them because of its probable importance to the model. 
-
-```{r}
-data <- data %>% 
-  select(-c(corrDf$X2))
-data
-```
-We will also remove `is_weekend` from our analysis as the variables `weekday_is_sunday` and `weekday_is_saturday` capture the same information. 
-
-```{r}
-data <- data %>% 
-  select(-c("is_weekend"))
-```
-
-
-
-
-We are now down from `r ncol(newsData)` columns to `r ncol(data)` columns.
-
-Let us finally do a correlation plot for all variables with threshold greater than 0.55 for the the present dataframe. 
-
-```{r}
-cols <- names(data)
-
-corrDf <- data.frame(t(combn(cols,2)), stringsAsFactors = F) %>%
-  rowwise() %>%
-  mutate(v = cor(data[,X1], data[,X2]))
-
-corrDf <- corrDf %>% 
-  filter(abs(v)>0.55) %>% 
-  arrange(desc(v))
-corrDf
-
-#turn corr back into matrix in order to plot with corrplot
-correlationMat <- reshape2::acast(corrDf, X1~X2, value.var="v")
-  
-#plot correlations visually
-corrplot(correlationMat, is.corr=FALSE, tl.col="black", na.label=" ")
-```
-
-Now that we have a more concise data set, let's zero in on the relationship between our target variable, shares, and the remaining variables. Below we extract the five variables that have the highest correlation with the shares variable. This may be a valuable insight prior to training our models.  
-
-```{r}
-sharesCor <- cor(data[ , colnames(data) != "shares"],  # Calculate correlations
-                data$shares)
-
-sharesCor <- data.frame(sharesCor)
-sharesCor$names <- rownames(sharesCor)
-rownames(sharesCor) <- NULL
-
-sharesCor <- sharesCor %>% 
-  rename(corrcoeff=sharesCor) %>% 
-  arrange(desc(abs(corrcoeff))) %>% 
-  head(6)
-
-par(mfrow=c(2,3))
-for (i in sharesCor$names) {
-  plot(data$shares, data[[i]], ylab = i, main = paste("Shares vs", i))
-}
-
-
-#for (i in sharesCor$names) {
- # ggpairs(data[[i]], ylab = i, main = paste("Shares vs", i))
-#}
-```
-
-Let's also take a look at the distribution of our target variable using a histogram.
+## Target Variable Distribution 
+Let's take a look at the distribution of our target variable using a histogram.
 
 ```{r}
 ggplot(data) +
@@ -266,6 +132,9 @@ ggplot(data) +
   theme_gray()
 ```
 
+*Interpretation: *
+
+## Title Tokens vs Shares 
 Now let's analyze the affect of the different variables on the shares. Starting with the number of words in the title and how they affect the shares. 
 
 ```{r}
@@ -278,8 +147,23 @@ data %>%
   labs(title = "Average Shares vs Title Tokens") +
   theme_gray()
 ```
+*Interpretation: *
 
-Expected Behavior : Readers prefer titles with fewer words. 
+## Number of Links in the Articles vs Shares
+
+```{r}
+data %>% 
+  group_by(num_hrefs) %>% 
+  summarise(avgShares = mean(shares)) %>% 
+  ggplot() +
+  aes(x = avgShares, y = num_hrefs) +
+  geom_point(shape = "circle", size = 1.5, colour = "#112446") +
+  labs(title = "Average Shares vs Number of Links") +
+  theme_gray()
+```
+*Interpretation: *
+
+## Number of Images vs Shares
 
 ```{r}
 data %>% 
@@ -291,8 +175,9 @@ data %>%
   labs(title = "Shares vs Images", x = "Number of Images", y = "Shares(Sum)") +
   theme_minimal()
 ```
+*Interpretation: *
 
-Expected Behavior : Fewer images do better. 
+## Number of Videos vs Shares
 
 ```{r}
 data %>% 
@@ -305,7 +190,9 @@ data %>%
   theme_minimal()
 ```
 
-Expected Behavior: 0-1 Videos do the best. 
+*Interpretation: *
+
+## Days of the Week and Shares
 
 ```{r}
 mon <- data %>% 
@@ -375,10 +262,11 @@ mon %>%
   theme_gray()
 ```
 
-Expected Behavior : Greatest number of articles is shared over weekends.
+*Interpretation: *
+
+## Title Polarity vs Shares
 
 Polarity is a float which lies in the range of [-1,1] where 1 refers to a positive statement and -1 refers to a negative statement. Does title polarity affect the average number of shares?
-
 
 ```{r}
 data %>% 
@@ -389,9 +277,9 @@ data %>%
   labs(title = "Shares vs Title Polarity", x = "Title Polarity", y = "Number of Shares") +
   theme_minimal()
 ```
-  
+*Interpretation: *
 
-How does text polarity affect shares?
+## Global Polarity vs Shares
 
 ```{r}
 data %>% 
@@ -402,21 +290,148 @@ data %>%
   labs(title = "Shares vs Text Polarity", x = "Text Polarity", y = "Number of Shares") +
   theme_minimal()
 ```
+*Interpretation: *
 
+## Subjectivity and Shares
 
 Subjective sentences generally refer to personal opinion, emotion or judgment whereas objective refers to factual information. Subjectivity is a float which lies in the range of [0,1]. A value closer to 0 means an opinion or an emotion and 1 means a fact. How does the text having a factual tone or an author's emotion/opinion affect the total shares?
 
 ```{r}
-data %>% 
-  ggplot() +
-  aes(x = global_subjectivity, y = shares) +
-  geom_point() +
-  geom_jitter() +
+ggplot(data) +
+  aes(x = shares, y = global_subjectivity) +
+  geom_point(shape = "circle", size = 1.5, colour = "#112446") +
   labs(title = "Shares vs Text Subjectivity", x = "Text Subjectivity", y = "Number of Shares") +
   theme_minimal()
 ```
+*Interpretation: *
 
-# Data Preparation
+## How does the rate of negative words in an article affect the Shares?
+
+```{r}
+data %>% 
+  group_by(rate_negative_words) %>% 
+  summarise(avgShares = mean(shares)) %>% 
+  ggplot() +
+  aes(x = avgShares, y = rate_negative_words) +
+  geom_point(shape = "circle", size = 1.5, colour = "#112446") +
+  labs(title = "Average Shares vs Rate of Negative Words") +
+  theme_gray()
+```
+*Interpretation: *
+
+## Correlation Analysis
+
+Now  that we have completed analysis of how the shares changes with the different variables, we do notice that there are way too many variables in this dataset. Feeding all these variables into the training models would mean "Garbage In and Garbage Out". One of the easiest ways to choose the variables to fit into the models is by checking the correlation. Potential predictors with high correlation between each other can prove problematic as they introduce multicollinearity into the model. We can remove some of this redundancy from the outset. While there are some models that thrive on correlated predictors. other models may benefit from reducing the level of correlation between the predictors.
+
+Let us first understand the pair plots for all the variables explaining keywords.
+
+```{r}
+pairs(~ kw_min_min + kw_max_min + kw_min_max + kw_avg_max + kw_max_avg + kw_avg_min + kw_max_max + kw_min_avg + kw_avg_avg, data = data)
+```
+
+```{r}
+cor(data[, c('kw_min_min', 'kw_max_min', 'kw_min_max', 'kw_avg_max', 'kw_max_avg', 'kw_avg_min', 'kw_max_max', 'kw_min_avg', 'kw_avg_avg')])
+```
+
+
+```{r}
+kwCorData <- as.data.frame(as.table(cor(data[, c('kw_min_min', 'kw_max_min', 'kw_min_max', 'kw_avg_max', 'kw_max_avg', 'kw_avg_min', 'kw_max_max', 'kw_min_avg', 'kw_avg_avg')])))
+
+colRemove <- kwCorData %>% 
+  filter(abs(Freq)>0.8 & Freq!=1 )
+
+colRemove <- as.vector(colRemove$Var2)
+
+data <- data %>% 
+  select(-all_of(colRemove))
+```
+
+This removes all the highly correlated keyword variables that convey the same information. Now we will similarly investigate the self-referenced shares. 
+
+
+```{r}
+pairs(~ self_reference_avg_sharess + self_reference_max_shares + self_reference_min_shares, data = data)
+```
+
+If we find that any of the self_reference shares variables have a correlation of greater than 0.8 with one another, then we will eliminate it from the analysis. Again, this is done to limit the multicollinearity in the models we build below as well as reduce their dimension. We want to simplify our models from the outset as much as possible without losing predictors that will explain much of the variability in the number of times an article is shared. 
+
+```{r}
+srCorData <- as.data.frame(as.table(cor(data[, c('self_reference_avg_sharess', 'self_reference_max_shares', 'self_reference_min_shares')])))
+
+colRemove <- srCorData %>% 
+  filter(abs(Freq)>0.8 & Freq!=1)
+
+colRemove <- as.vector(colRemove$Var2)
+
+data <- data %>% 
+  select(-all_of(colRemove))
+```
+
+In this next step, we examine our remaining variables to see if any share a correlation of 0.70 or higher. If so, we will remove it from the data. 
+
+```{r}
+descrCor <- cor(data) 
+highlyCorVar <- findCorrelation(descrCor, cutoff = .85)
+data <- data[,-highlyCorVar]
+```
+
+Again, we do not want to remove both the highly correlated variables. For example, if we were looking at the variables temperature in Farenheit and temperature in Celcius in predicting the number of people at a beach, both variable would be telling us the same thing, but we would still want to keep one of them because of its probable importance to the model. 
+We will also remove `is_weekend` from our analysis as the variables `weekday_is_sunday` and `weekday_is_saturday` capture the same information. 
+
+```{r}
+data <- data %>% 
+  select(-c("is_weekend"))
+```
+
+We are now down from `r ncol(newsData)` columns to `r ncol(data)` columns.
+
+Let us finally do a correlation plot for all variables with threshold greater than 0.55 for the the present dataframe. 
+
+```{r}
+cols <- names(data)
+
+corrDf <- data.frame(t(combn(cols,2)), stringsAsFactors = F) %>%
+  rowwise() %>%
+  mutate(v = cor(data[,X1], data[,X2]))
+
+corrDf <- corrDf %>% 
+  filter(abs(v)>0.55) %>% 
+  arrange(desc(v))
+corrDf
+
+#turn corr back into matrix in order to plot with corrplot
+correlationMat <- reshape2::acast(corrDf, X1~X2, value.var="v")
+  
+#plot correlations visually
+corrplot(correlationMat, is.corr=FALSE, tl.col="black", na.label=" ")
+```
+
+Now that we have a more concise data set, let's zero in on the relationship between our target variable, shares, and the remaining variables. Below we extract the five variables that have the highest correlation with the shares variable. This may be a valuable insight prior to training our models.  
+
+```{r}
+sharesCor <- cor(data[ , colnames(data) != "shares"],  # Calculate correlations
+                data$shares)
+
+sharesCor <- data.frame(sharesCor)
+sharesCor$names <- rownames(sharesCor)
+rownames(sharesCor) <- NULL
+
+sharesCor <- sharesCor %>% 
+  rename(corrcoeff=sharesCor) %>% 
+  arrange(desc(abs(corrcoeff))) %>% 
+  head(6)
+
+par(mfrow=c(2,3))
+for (i in sharesCor$names) {
+  plot(data$shares, data[[i]], ylab = i, main = paste("Shares vs", i))
+}
+
+#for (i in sharesCor$names) {
+ # ggpairs(data[[i]], ylab = i, main = paste("Shares vs", i))
+#}
+```
+
+# Data Splitting
 
 Data splitting is an important aspect of data science, particularly for creating predictive models based on data. This technique helps ensure the creation of data models and processes that use data models -- such as machine learning -- are accurate. In a basic two-part data split, the training data set is used to train and fit models. Training sets are commonly used to estimate different parameters or to compare different model performance. The testing data set is used after the training is done; we see if our trained models are effective in predicting future values. We will use a 70-30 split on the dataset.
 
@@ -444,15 +459,15 @@ We will be comparing linear and ensemble techniques for predicting shares. Each 
 
 A simple linear regression refers to a linear equation that captures the relationship between a response variable, $Y$, and a predictor variable $X$.  The relationship is modeled below:
 
-$Y = \beta_0 + \beta_1X_1 +\epsilon i$
+$$Y = \beta_0 + \beta_1X_1 +\epsilon i$$
 
 Where $\beta_0$ is the intercept and $\beta_1$ is the slope of the line. This relationship can be extended to the case in which the response variable is modeled as a function of more than one predictor variable. This is the case of a multiple linear regression, which is as follows:
 
-$Y = \beta_0 + \beta_1X_1 + \beta_2X_2 + … + \beta_nX_n + \epsilon i$
+$$Y = \beta_0 + \beta_1X_1 + \beta_2X_2 + … + \beta_nX_n + \epsilon i$$
 
 Where $\beta_0$ is the intercept and all $\beta$ are slope coefficients. For both simple and multiple linear regression cases, the Method of Least Squares is widely used in summarizing the data. The least squares method minimizes values of $\beta_0$ and all $\beta_n$, seen below:
 
-$\sum_{i = 1}^{n} (yi - \beta_0 - \sum_{j = 1}^{k} \beta_j x_{ij}^2)$
+$$\sum_{i = 1}^{n} (yi - \beta_0 - \sum_{j = 1}^{k} \beta_j x_{ij}^2)$$
 
 Since we are dealing with `r ncol(data)` variables, it is probably important to know that we would need to employ a feature selection/dimension reduction technique. Feature selection is the process of reducing the number of input variables when developing a predictive model.
 It is desirable to reduce the number of input variables to both reduce the computational cost of modeling and, in some cases, to improve the performance of the model. To prove this, we will first fit a full-model (with all the available variables) with multiple linear regression. 
@@ -463,22 +478,27 @@ trControl <- trainControl(method = "repeatedcv", number = 5, repeats = 5)
 mlrWithoutVS <- train(shares ~ .,
                      data = train,
                      preProcess = c("center", "scale"),
-                     method = "lm", trControl = trControl)
+                     method = "lm", 
+                     trControl = trControl)
 
 summary(mlrWithoutVS)
 ```
 
+```{r}
+mlrWithoutVS$results
+```
+
 As we can see, the Root Mean Square Error of the model is `mlrWithoutVS$results$RMSE`. Now let us see how this changes with the Principle Components Analysis below.  
 
+### Linear Regression with Dimensionality Reduction
+
 Principle Components Analysis (PCA) is a dimension-reduction technique that can be extended to regression. In a PCA we find linear combinations of the predictor variables that account for most of the variability in the model. What this does is it reduces the number of variables $p$ into $m$ principal components, allowing for a reduction in complexity all the while retaining most of the variability of the $p$ variables. We extend this to regression by treating our $m$ principle components as predictors, though we cannot interpret them in the same way.  
-
-
-Let us check the model for multicollinearity. 
 
 ```{r}
 pcs <- prcomp(train, scale = TRUE, center = TRUE)
 summary(pcs)
 ```
+
 How many principle components should we use? This is somewhat subjective. Consider the plot below. How many principle components would be required in order to retain say 80 or 90 percent of the variability in the data? If we can effectively reduce the number of variables by way of this method, then we may want to consider a regression of these principle components, even if we lose some interpretability. 
 
 ```{r}
@@ -500,9 +520,10 @@ for (i in seq_along(pcaVar)) {
 pc_train <- predict(pcs, train)
 pc_train <- data.frame(pc_train)
 pc_train <- pc_train %>% 
-  select(c(1:pcaIndex)) %>% 
+  select(all_of(c(1:pcaIndex))) %>% 
   mutate(shares = train$shares)
-pc_test <- predict(pcs, test)
+pc_test <- data.frame(predict(pcs, test))  %>% 
+  mutate(shares = test$shares)
 ```
 
 We will now fit a multiple linear regression using these principle components. 
@@ -517,7 +538,11 @@ mlrWitVS <- train(shares ~ .,
 summary(mlrWitVS)
 ```
 
-Now that we have a Multiple Linear Regression with PCA, let us see how a Lasso Regression on the original data set competes in terms of variable selection. 
+```{r}
+mlrWitVS$results
+```
+
+Now that we have a Multiple Linear Regression with PCA, let us see how a Lasso Regression on the original dataset competes in terms of variable selection. 
 
 ```{r, warning=FALSE}
 tuneGrid <- expand.grid(
@@ -532,14 +557,11 @@ lassoModel <- train(
   trControl = trControl,
   tuneGrid = tuneGrid
 )
-
-lassoFinalModel <- as_tibble(lassoModel$results) %>% 
-  filter(fraction==lassoModel$bestTune$fraction) 
 ```
 
 
 ```{r}
-lassoFinalModel
+lassoModel$results
 ```
 
 ## Random Forest
@@ -549,20 +571,23 @@ The random forest model refers to an ensemble method of either classification or
 Generally speaking, random forests predict more accurately because the results of the fitted trees are averaged across all trees. This averaging reduces variance. 
 
 ```{r}
-tuneGrid = expand.grid(mtry = 1:10)
+tuneGrid = expand.grid(mtry = 1:3)
 
-rfWithPC <- train(shares ~ .,
-                  data = pc_train,
+rfModel <- train(shares ~ .,
+                  data = train,
                   method = "rf", 
                   trControl = trControl,
                   tuneGrid = tuneGrid)
+```
 
-rfFinalModel <- as_tibble(rfWithPC$results) %>% 
-  filter(mtry == rfWithPC$bestTune$mtry) 
+Looking at the Variable Importance Plot : 
+
+```{r}
+plot(varImp(rfModel))
 ```
 
 ```{r}
-rfFinalModel
+rfModel$results
 ```
 
 ## Boosted Tree
@@ -571,77 +596,84 @@ Boosted tree models, like the random forest, are an ensemble tree-based method t
 
 Unlike the random forest, in the boosted tree method, trees are grown sequentially, and for each tree the residuals are treated as the response. This is exactly true for the first tree. Updated predictions can be modeled by the following:
 
-$\hat{y} = \hat{y}(x) + \lambda \hat{y}^b (x)$
+$$\hat{y} = \hat{y}(x) + \lambda \hat{y}^b (x)$$
 
 Below we fit our boosted tree model to the training data set.
 
 ```{r, results=FALSE}
-tuneGrid = expand.grid(n.trees = c(25, 50, 100, 150, 200), interaction.depth = c(1, 2, 3, 4), shrinkage = 0.1, n.minobsinnode = 10)
+tuneGrid = expand.grid(n.trees = seq(5, 30, 5), interaction.depth = seq(1,10,1), shrinkage = 0.1, n.minobsinnode = 20)
 
 # fit the model
-boostedWithPC <- train(shares ~ .,
-                  data = pc_train,
+boostingModel <- train(shares ~ .,
+                  data = train,
                   method = "gbm", 
                   trControl = trControl,
                   tuneGrid = tuneGrid,
                   verbose = FALSE)
 
-boostedFinalModel <- as_tibble(boostedWithPC$results) %>% 
-  filter(n.trees==boostedWithPC$bestTune$n.trees,
-         interaction.depth==boostedWithPC$bestTune$interaction.depth,
-         shrinkage==boostedWithPC$bestTune$shrinkage,
-         n.minobsinnode==boostedWithPC$bestTune$n.minobsinnode) 
 ```
 
+# Model Comparison 
 
-# Model Comparisons
+## Train Model Comparison
+
+Now although using the accuracy on the testing data is the gold standard for model comparison, it can be imperative to check the train model accuracy to see how the models have fit the dataset. If there is a huge difference in train accuracies then we know that a certain model does not fit the data well. Here is a summarisation of the models with their hyperparameters and model metrics.
+
+```{r}
+trainModelComparison <- mlrWithoutVS$results[which.min(mlrWithoutVS$results$RMSE),] %>% 
+  bind_rows(mlrWitVS$results[which.min(mlrWitVS$results$RMSE),],
+            lassoModel$results[which.min(lassoModel$results$RMSE),], 
+            rfModel$results[which.min(mlrWithoutVS$results$RMSE),],
+            boostingModel$results[which.min(boostingModel$results$RMSE),]) %>% 
+  mutate(Model = c("MLR", "MLR with PCA", "Lasso", "Random Forest", "Boosted Tree with PCA")) %>% 
+  select(Model, everything())
+trainModelComparison
+```
+
+We see that the model with the lowest RMSE value is `r trainModelComparison[which.min(trainModelComparison$RMSE),"Model"]` with an RMSE value of `r trainModelComparison[which.min(trainModelComparison$RMSE),"RMSE"]`. The model that performs the poorest `r trainModelComparison[which.max(trainModelComparison$RMSE),"Model"]` with an RMSE value of `r trainModelComparison[which.max(trainModelComparison$RMSE),"RMSE"]` which means that the model was incapable of fitting the data well.
+
+## Test Model Comparison
 
 Now that we have created our trained models (models fit to the training data) we should now see how accurately they predict future values. Once we have evaluated each of the models, we should be able to compare them to see which is best at making predictions on future data. We can do this by comparing the predicted values of the tested with the actual test set values. 
 
-## Linear Regression Evaluation
+Withe function `postResample()` we can find our RMSE on the test data set and compare it across models. 
 
-Withe function `postResample()` we can find our RMSE for our linear regression on the test data set. How does it compare with the other models? 
-
-```{r}
-Pred_Linear_Test <- predict(mlrWithoutVS, test)
-
-postResample(pred = PredLinearTest, obs = test$shares)
+```{r, warning=FALSE}
+predLinearTest <- predict(mlrWithoutVS, test)
+testMLR<- postResample(pred = predLinearTest, obs = test$shares)
 ```
 
-## PCA Regression Evaluation
-
 ```{r}
-PredPCAtest <- predict(mlrWitVS, pc_test)
-
-postResample(pred = PredPCAtest, obs = pc_test)
+predPCAtest <- predict(mlrWitVS, pc_test)
+testPCA <- postResample(pred = predPCAtest, obs = pc_test$shares)
 ```
 
-## LASSO Regression
-
 ```{r}
-#PredLassoTest <- predict(lassoModel$, test)
-
-#postResample(pred = PredLassoTest, test$shares)
+predLassoTest <- predict(lassoModel, test)
+testLasso <- postResample(pred = predLassoTest, test$shares)
 ```
 
-## Random Forest
-
 ```{r}
-rf_pred <- predict(rfFinalModel, test$shares)
-
-postResample(pred = rf_pred, obs = test$shares)
+predRandomForest <- predict(rfModel, test)
+testRandomForest <- postResample(pred = predRandomForest, obs = test$shares)
 ```
 
-## Boosted Trees
-
 ```{r}
-Boost_pred <- predict(boostedFinalModel, test$shares)
-
-postResample(pred = rf_pred, obs = test$shares)
+predBoosting <- predict(boostingModel, test)
+testBoosting <- postResample(pred = predBoosting, obs = test$shares)
 ```
-
-
-## Comparison
 
 In comparing the above models, we should be looking at which among the models best minimizes the RMSE, as the model with the lowest RMSE will, on average, make the most accurate predictions. 
 
+```{r}
+testModelComparison <- testMLR %>% 
+  bind_rows(testPCA, testLasso, testRandomForest, testBoosting) %>% 
+  mutate(Model = c("MLR", "MLR with PCA", "Lasso", "Random Forest", "Boosted Tree with PCA")) %>% 
+  select(Model, everything())
+testModelComparison
+```
+
+We see that the model with the lowest RMSE value is `r testModelComparison[which.min(testModelComparison$RMSE),"Model"]` with an RMSE value of `r testModelComparison[which.min(testModelComparison$RMSE),"RMSE"]`. The model that performs the poorest `r testModelComparison[which.max(testModelComparison$RMSE),"Model"]` with an RMSE value of `r testModelComparison[which.max(testModelComparison$RMSE),"RMSE"]`. 
+
+# Conclusion 
+Here's is general observation on the modelling with data with high dimension : When there are large number of features with less data-sets(with low noise), linear regressions may outperform Decision trees/random forests. There is no thumb rule on which model will perform the best on what kind of dataset. If you are dealing with a dataset with high dimensionality then your first approach must be to decrease this dimensionality before fitting the models. Both LASSO and PCA are dimensionality reduction techniques. Both methods can reduce the dimensionality of a dataset but follow different styles. LASSO, as a feature selection method, focuses on deletion of irrelevant or redundant features. PCA, as a dimension reduction method, combines the features into a smaller number of aggregated components (a.k.a., the new features).
