@@ -44,7 +44,7 @@ newsData <- read_csv(unzippedNewDataCSV[2])
 
 head(newsData)
 ```
-We will subset the data according to the channel passed to analyze articles in one data channel at a time. Additionally according to the data report, `url` and `timedelta` are two non-predictive columns so we will remove them.
+We will subset the data according to the channel passed to analyze articles in one data channel at a time (see the custom function below). Additionally, according to the data report, `url` and `timedelta` are two non-predictive columns so we will remove them.
 
 ```{r subsetdata}
 subsettingData <- function(data, area){
@@ -72,7 +72,10 @@ channel <- subsettingDataReturn[[2]]
 
 # Exploratory Data Analysis 
 
+Below we conduct a preliminary investigation into our variables. Our goal here is to better understand our data as well as unearth potential relationships between the variables. 
+
 ## Column Description 
+
 Let us take a look at the columns available. 
 
 ```{r}
