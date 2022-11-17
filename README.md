@@ -16,12 +16,12 @@ The methodology used was to first read in the data and filter on the channel dyn
 
 # Links to the Final Reports 
 
-- [Lifestyle Report :](lifestyle.html) 
-- [Business Report :](bus.html) 
-- [Social Media Report :](socmed.html)
-- [World Report :](world.html)
-- [Technology Report :](tech.html) 
-- [Entertainment Report :](entertainment.html) 
+- [Lifestyle Report :](https://mcartron10.github.io/Stat558_Project3_CartronKaranjai/lifestyle.html) 
+- [Business Report :](https://mcartron10.github.io/Stat558_Project3_CartronKaranjai/business.html) 
+- [Social Media Report :](https://mcartron10.github.io/Stat558_Project3_CartronKaranjai/socialmedia.html)
+- [World Report :](https://mcartron10.github.io/Stat558_Project3_CartronKaranjai/world.html)
+- [Technology Report :](https://mcartron10.github.io/Stat558_Project3_CartronKaranjai/technology.html) 
+- [Entertainment Report :](https://mcartron10.github.io/Stat558_Project3_CartronKaranjai/entertainment.html) 
 
 # Code to generate reports for each channel 
 
