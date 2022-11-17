@@ -326,9 +326,9 @@ The above scatter plot again looks at sentiment, though this time plotting the r
 
 ## Correlation Analysis
 
-Now  that we have completed analysis of how the shares changes with the different variables, we do notice that there are way too many variables in this dataset. Feeding all these variables into the training models would mean "Garbage In and Garbage Out". One of the easiest ways to choose the variables to fit into the models is by checking the correlation. Potential predictors with high correlation between each other can prove problematic as they introduce multicollinearity into the model. We can remove some of this redundancy from the outset. While there are some models that thrive on correlated predictors. other models may benefit from reducing the level of correlation between the predictors.
+Now  that we have completed analysis of how the shares changes with the different variables, we do notice that there are way too many variables in this data set. Feeding all these variables into the training models would mean "Garbage In and Garbage Out". One of the easiest ways to choose the variables to fit into the models is by checking the correlation. Potential predictors with high correlation between each other can prove problematic as they introduce multicollinearity into the model. We can remove some of this redundancy from the outset. While there are some models that thrive on correlated predictors. other models may benefit from reducing the level of correlation between the predictors.
 
-Let us first understand the pair plots for all the variables explaining keywords.
+Let us first understand the pair plots for all the variables explaining keywords. Can we see any obvious relationships between them? 
 
 ```{r}
 pairs(~ kw_min_min + kw_max_min + kw_min_max + kw_avg_max + kw_max_avg + kw_avg_min + kw_max_max + kw_min_avg + kw_avg_avg, data = data)
