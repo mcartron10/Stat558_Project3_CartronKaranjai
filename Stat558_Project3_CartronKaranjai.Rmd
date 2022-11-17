@@ -52,7 +52,7 @@ subsettingData <- function(data, area){
   key <- ifelse(tolower(area)=="lifestyle", "lifestyle",
                 ifelse(tolower(area)=="entertainment", "entertainment",
                        ifelse(tolower(area)=="business", "bus",
-                              ifelse(tolower(area)=="social media", "socmed",
+                              ifelse(tolower(area)=="socialmedia", "socmed",
                                      ifelse(tolower(area)=="technology", "tech",
                                             ifelse(tolower(area)=="world", "world", "NA"))))))
   subsetVar <- paste("data_channel_is_", key, sep = "")
