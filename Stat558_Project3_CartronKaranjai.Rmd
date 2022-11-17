@@ -111,7 +111,7 @@ First, let's take a look at the variable descriptions for some better understand
 - shares: Number of shares (target)
 
 
-Below we run the five-number summary for each of the variables thus far still included. 
+Below we run the five-number summary for each of the variables thus far still included. This includes the minimum and maximum values along with the four quartiles for each of the variables.
 
 ## Summary Statistics
 ```{r summarystats}
@@ -119,7 +119,6 @@ print(paste("******Summary Statistics of", channel, "******"))
 summary(data)
 ```
 
-*Interpretation: *
 
 ## Target Variable Distribution 
 Let's take a look at the distribution of our target variable using a histogram.
@@ -132,10 +131,10 @@ ggplot(data) +
   theme_gray()
 ```
 
-*Interpretation: *
+What does the distribution show? Does the distribution follow a known distribution? Is there skewness? What might these features tell us about the number of shares? The number of shares is plotted along the x-axis, with frequency (count) on the y-axis. 
 
 ## Title Tokens vs Shares 
-Now let's analyze the affect of the different variables on the shares. Starting with the number of words in the title and how they affect the shares. 
+Now let's analyze the effect of the different variables on the number of shares. Starting with the number of words in the title and how they affect the shares. 
 
 ```{r}
 data %>% 
@@ -147,7 +146,7 @@ data %>%
   labs(title = "Average Shares vs Title Tokens") +
   theme_gray()
 ```
-*Interpretation: *
+The average number of shares is plotted on the x-axis while the numvber of words in the article title is plotted on the y-axis. Can we see any relationship between the two variables? 
 
 ## Number of Links in the Articles vs Shares
 
@@ -161,7 +160,7 @@ data %>%
   labs(title = "Average Shares vs Number of Links") +
   theme_gray()
 ```
-*Interpretation: *
+The average number of shares is plotted on the x-axis while the number of hyperlinks is plotted on the y-axis. Like with the previous plot, we use a scatter plot because we have two numeric variables, with the average number of shares being continuous. Can we see any relationship between the two variables? 
 
 ## Number of Images vs Shares
 
@@ -175,7 +174,7 @@ data %>%
   labs(title = "Shares vs Images", x = "Number of Images", y = "Shares(Sum)") +
   theme_minimal()
 ```
-*Interpretation: *
+The above bar plot demonstrates the relationship between the number of images in an article (x-axis) and the sum of the shares the article experienced. Can we see any patterns in the above visualization? 
 
 ## Number of Videos vs Shares
 
@@ -190,7 +189,7 @@ data %>%
   theme_minimal()
 ```
 
-*Interpretation: *
+In the above bar plot the number of videos featured in an article is plotted against the summed shares per video number. Do we notice any patterns? Can we make any comparisons between this plot (with videos) vs the previous plot, which looks at the number of images in an article? 
 
 ## Days of the Week and Shares
 
@@ -262,7 +261,9 @@ mon %>%
   theme_gray()
 ```
 
-*Interpretation: *
+The above bar plot looks at the sum of shares given for each day of the week. Are there any patterns? Are there differences in the number of shares between weekdays and the weekend? If so, what might cause this? Are articles also most likely to be published on certain days of the week, and thus more likely to be shared on those days? We can speculate. 
+
+In the three scatter plots below, we take a magnifying glass to some of the variables measuring features of article sentiment. We suspect there might be some patterns below (not guaranteed!). Can we use this as a starting point for investigating how article sentiment influences the dissemination of information (if at all)? 
 
 ## Title Polarity vs Shares
 
@@ -277,7 +278,7 @@ data %>%
   labs(title = "Shares vs Title Polarity", x = "Title Polarity", y = "Number of Shares") +
   theme_minimal()
 ```
-*Interpretation: *
+The above scatter plot looks at title polarity (how negative or positive an article title might be) and the number of shares for a given article. Can we see any initial patterns worth exploring? 
 
 ## Global Polarity vs Shares
 
@@ -290,11 +291,11 @@ data %>%
   labs(title = "Shares vs Text Polarity", x = "Text Polarity", y = "Number of Shares") +
   theme_minimal()
 ```
-*Interpretation: *
+The above scatter plot is similar to the previous scatter plot, though this time we take a look at the text polarity (how positive or negative the words of the article are) and plot it against the number of times a given article is shared (y-axis). Again, do we notice any patterns? 
 
 ## Subjectivity and Shares
 
-Subjective sentences generally refer to personal opinion, emotion or judgment whereas objective refers to factual information. Subjectivity is a float which lies in the range of [0,1]. A value closer to 0 means an opinion or an emotion and 1 means a fact. How does the text having a factual tone or an author's emotion/opinion affect the total shares?
+Subjective sentences generally refer to personal opinion, emotion or judgment whereas objective sentences are considered to relate factual information. Subjectivity is a float which lies in the range of [0,1]. A value closer to 0 means an opinion or an emotion and 1 means a fact. How does the text having a factual tone or an author's emotion/opinion affect the total shares?
 
 ```{r}
 ggplot(data) +
@@ -303,7 +304,7 @@ ggplot(data) +
   labs(title = "Shares vs Text Subjectivity", x = "Text Subjectivity", y = "Number of Shares") +
   theme_minimal()
 ```
-*Interpretation: *
+In the above scatter plot, we plot the text subjectivity against the number of times an article is shared (y-axis). Though subjectivity is not sentiment, we might have reason to suspect that they could be related--are subjective articles more mysterious, more enticing, more prone to "clickbait"? Does this scatter plot seem to convey anything like this? 
 
 ## How does the rate of negative words in an article affect the Shares?
 
@@ -542,7 +543,7 @@ summary(mlrWitVS)
 mlrWitVS$results
 ```
 
-Now that we have a Multiple Linear Regression with PCA, let us see how a Lasso Regression on the original dataset competes in terms of variable selection. 
+Now that we have a Multiple Linear Regression with PCA, let us see how a Lasso Regression on the original dataset competes in terms of variable selection. For reference, lasso regression completes both variable selection and regularization in order to optimize prediction accuracy. 
 
 ```{r, warning=FALSE}
 tuneGrid <- expand.grid(
@@ -617,7 +618,7 @@ boostingModel <- train(shares ~ .,
 
 ## Train Model Comparison
 
-Now although using the accuracy on the testing data is the gold standard for model comparison, it can be imperative to check the train model accuracy to see how the models have fit the dataset. If there is a huge difference in train accuracies then we know that a certain model does not fit the data well. Here is a summarisation of the models with their hyperparameters and model metrics.
+Now although using the accuracy on the testing data is the gold standard for model comparison, it can be imperative to check the trained model accuracy to see how the models have fit the dataset. If there is a huge difference in trained-model accuracies, then we know that a certain model does not fit the data well. Here is a summarization of the models with their hyperparameters and model metrics.
 
 ```{r}
 trainModelComparison <- mlrWithoutVS$results[which.min(mlrWithoutVS$results$RMSE),] %>% 
@@ -632,7 +633,7 @@ trainModelComparison
 
 We see that the model with the lowest RMSE value is `r trainModelComparison[which.min(trainModelComparison$RMSE),"Model"]` with an RMSE value of `r trainModelComparison[which.min(trainModelComparison$RMSE),"RMSE"]`. The model that performs the poorest `r trainModelComparison[which.max(trainModelComparison$RMSE),"Model"]` with an RMSE value of `r trainModelComparison[which.max(trainModelComparison$RMSE),"RMSE"]` which means that the model was incapable of fitting the data well.
 
-## Test Model Comparison
+## Test Model Comparisons
 
 Now that we have created our trained models (models fit to the training data) we should now see how accurately they predict future values. Once we have evaluated each of the models, we should be able to compare them to see which is best at making predictions on future data. We can do this by comparing the predicted values of the tested with the actual test set values. 
 
@@ -676,4 +677,5 @@ testModelComparison
 We see that the model with the lowest RMSE value is `r testModelComparison[which.min(testModelComparison$RMSE),"Model"]` with an RMSE value of `r testModelComparison[which.min(testModelComparison$RMSE),"RMSE"]`. The model that performs the poorest `r testModelComparison[which.max(testModelComparison$RMSE),"Model"]` with an RMSE value of `r testModelComparison[which.max(testModelComparison$RMSE),"RMSE"]`. 
 
 # Conclusion 
-Here's is general observation on the modelling with data with high dimension : When there are large number of features with less data-sets(with low noise), linear regressions may outperform Decision trees/random forests. There is no thumb rule on which model will perform the best on what kind of dataset. If you are dealing with a dataset with high dimensionality then your first approach must be to decrease this dimensionality before fitting the models. Both LASSO and PCA are dimensionality reduction techniques. Both methods can reduce the dimensionality of a dataset but follow different styles. LASSO, as a feature selection method, focuses on deletion of irrelevant or redundant features. PCA, as a dimension reduction method, combines the features into a smaller number of aggregated components (a.k.a., the new features).
+
+When there were a number of features with fewer data-sets (with low noise), linear regressions may outperform decision trees/random forests. There is no general rule regarding which model will perform the best on what kind of data set. If you are dealing with a data set with high dimensionality then your first approach must be to decrease this dimensionality before fitting the models. Both LASSO and PCA are dimension-reduction techniques. Both methods can reduce the dimensionality of a dataset but use different approaches. LASSO, as a feature selection method, focuses on deletion of irrelevant or redundant features. PCA, as a dimension reduction method, combines the features into a smaller number of aggregated components (a.k.a., the new features). 
