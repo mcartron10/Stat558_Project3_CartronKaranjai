@@ -117,6 +117,7 @@ First, let's take a look at the variable descriptions for some better understand
 Below we run the five-number summary for each of the variables thus far still included. This includes the minimum and maximum values along with the four quartiles for each of the variables.
 
 ## Summary Statistics
+
 ```{r summarystats}
 print(paste("******Summary Statistics of", channel, "******"))
 summary(data)
@@ -316,12 +317,12 @@ data %>%
   group_by(rate_negative_words) %>% 
   summarise(avgShares = mean(shares)) %>% 
   ggplot() +
-  aes(x = avgShares, y = rate_negative_words) +
+  aes(x = rate_negative_words, y = avgShares) +
   geom_point(shape = "circle", size = 1.5, colour = "#112446") +
   labs(title = "Average Shares vs Rate of Negative Words") +
   theme_gray()
 ```
-*Interpretation: *
+The above scatter plot again looks at sentiment, though this time plotting the rate of negative words against the average number of shares (y-axis) for an article. Do articles with a higher rate of negative words also have more share? Is the inverse true? 
 
 ## Correlation Analysis
 
