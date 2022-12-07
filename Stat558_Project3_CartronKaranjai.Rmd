@@ -49,13 +49,7 @@ We will subset the data according to the channel passed to analyze articles in o
 ```{r subsetdata}
 subsettingData <- function(data, area){
   #getting the naming convention as per the dataframe
-  key <- ifelse(tolower(area)=="lifestyle", "lifestyle",
-                ifelse(tolower(area)=="entertainment", "entertainment",
-                       ifelse(tolower(area)=="business", "bus",
-                              ifelse(tolower(area)=="socialmedia", "socmed",
-                                     ifelse(tolower(area)=="technology", "tech",
-                                            ifelse(tolower(area)=="world", "world", "NA"))))))
-  subsetVar <- paste("data_channel_is_", key, sep = "")
+  subsetVar <- paste("data_channel_is_", area, sep = "")
   
   # filtering the data and removing the data_channel_is_ columns, url, and timedelta
   subsetData <- data %>% 
@@ -65,7 +59,7 @@ subsettingData <- function(data, area){
   return(list(subsetData, subsetVar))
 }
 
-subsettingDataReturn <- subsettingData(newsData, "lifestyle")
+subsettingDataReturn <- subsettingData(newsData, params$channel)
 data <- subsettingDataReturn[[1]]
 channel <- subsettingDataReturn[[2]]
 ```
@@ -500,7 +494,7 @@ As we can see, the Root Mean Square Error of the model is `mlrWithoutVS$results$
 Principle Components Analysis (PCA) is a dimension-reduction technique that can be extended to regression. In a PCA we find linear combinations of the predictor variables that account for most of the variability in the model. What this does is it reduces the number of variables $p$ into $m$ principal components, allowing for a reduction in complexity all the while retaining most of the variability of the $p$ variables. We extend this to regression by treating our $m$ principle components as predictors, though we cannot interpret them in the same way.  
 
 ```{r}
-pcs <- prcomp(train, scale = TRUE, center = TRUE)
+pcs <- prcomp(select(train, -c("shares")), scale = TRUE, center = TRUE)
 summary(pcs)
 ```
 
