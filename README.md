@@ -40,7 +40,7 @@ channel_colnames <- col_names[grepl("data_channel_is", col_names)]
 channel_names <- gsub("^.*_", "", channel_colnames)
 
 #create filenames
-output_file <- paste0(channel_names, ".html")
+output_file <- paste0(channel_names, ".md")
 
 #create a list for each team with just the team name parameter
 params = lapply(channel_names, FUN = function(x){list(channel = x)})
